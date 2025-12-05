@@ -11,10 +11,15 @@ A high-frequency paper trading system demonstrating multi-language systems engin
 - **Real-time Market Data** (Rust): WebSocket connection to Binance with order book reconstruction
 - **Type-Safe Risk Engine** (OCaml): Position limits, drawdown circuit breakers, P&L calculation
 - **Trading Strategy** (Python): Order flow imbalance strategy with volatility adjustment
-- **Paper Trading**: Realistic execution simulation with slippage and fees
+- **Paper Trading**: Realistic execution simulation with slippage, market impact, and fees
 - **Shabbat Pause**: Automatic trading pause from Friday to Saturday sunset
 - **Live Dashboard**: Auto-updating README with performance charts via GitHub Actions
 - **Free Deployment**: Runs 24/6 on Fly.io free tier
+- **State Recovery**: Checkpointing with warm-up period on restart
+- **Safety Systems**: Kill switch, circuit breakers, rate limiting, sanity checks
+- **Complementary Data**: Funding rates, open interest, liquidation monitoring
+- **Strategy Versioning**: A/B testing support with performance tracking
+- **Replay Logging**: Full event logging for debugging and analysis
 
 ## Architecture
 
@@ -136,6 +141,61 @@ The primary strategy exploits **order book imbalance** - when bid volume signifi
 - **Rate Limiting**: Max 60 orders/minute
 - **Stop Loss**: 2x ATR below entry
 
+## Robustness Features
+
+### State Management & Recovery
+
+The system implements periodic checkpointing to handle crashes and restarts gracefully:
+
+- **Checkpointing**: Full state saved every 60 seconds
+- **Warm-up Period**: 5 minutes + 100 data points before trading
+- **Graceful Shutdown**: SIGTERM handler ensures clean state persistence
+
+### Realistic Execution Simulation
+
+Paper trading simulates real-world execution challenges:
+
+- **Fill Probability**: Models queue position for limit orders
+- **Market Impact**: Large orders walk through multiple price levels
+- **Variable Latency**: Higher latency during volatile periods
+- **Partial Fills**: Not all orders fill completely
+
+### Safety Systems
+
+Multiple layers protect against catastrophic bugs:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Kill Switch                        │
+│  (Manual emergency stop via API or Telegram)        │
+├─────────────────────────────────────────────────────┤
+│               Circuit Breaker                        │
+│  (Auto-pause on consecutive losses or drawdown)     │
+├─────────────────────────────────────────────────────┤
+│               Rate Limiter                           │
+│  (Hard limit: 5/sec, 60/min, 500/hour)             │
+├─────────────────────────────────────────────────────┤
+│              Sanity Checks                           │
+│  (Price/quantity bounds, symbol validation)         │
+└─────────────────────────────────────────────────────┘
+```
+
+### Complementary Data
+
+Enhanced signals using additional market data:
+
+- **Funding Rate**: Detects extreme sentiment (>0.1% triggers caution)
+- **Open Interest**: Confirms trend strength
+- **Liquidations**: Monitors cascade risk
+
+### Strategy Versioning
+
+Track and compare strategy variations:
+
+- Each trade tagged with strategy version
+- Shadow mode for A/B testing
+- Performance comparison by version
+
 <!-- METRICS_START -->
 ## Live Performance
 
@@ -231,9 +291,35 @@ cd market-data && cargo bench
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Disclaimer
+## Important Disclaimers
 
-This is a **paper trading** system for educational and portfolio demonstration purposes only. It does not execute real trades or handle real money. Past simulated performance does not guarantee future results.
+### Educational Purpose Only
+
+This is a **paper trading** system created for educational and portfolio demonstration purposes only.
+
+- **No Real Trading**: This system does not execute real trades or handle real money
+- **No API Keys Required**: Uses only public WebSocket streams from Binance
+- **Not Financial Advice**: This project is not financial advice and should not be used to make investment decisions
+
+### Performance Disclaimer
+
+- **Simulated Results**: All performance metrics are from paper trading, not real trading
+- **No Guarantee**: Past simulated performance does not guarantee future results
+- **Market Conditions**: Real markets include factors not fully captured in simulation (liquidity, counterparty risk, exchange downtime)
+
+### Binance API Usage
+
+This project uses Binance's public APIs in accordance with their [Terms of Use](https://www.binance.com/en/terms). No private API access or trading functionality is implemented.
+
+### Data Privacy
+
+- The optional Telegram integration sends only trade summaries, never sensitive data
+- No personal information is collected or stored
+- All data is stored locally on the deployment server
+
+### Legal
+
+This software is provided "as is" without warranty of any kind. The authors are not responsible for any financial losses or legal issues arising from the use of this software.
 
 ---
 

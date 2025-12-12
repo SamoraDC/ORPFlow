@@ -11,6 +11,7 @@ mod publisher;
 mod websocket;
 
 use std::sync::Arc;
+use axum::{routing::get, Json, Router};
 use tokio::sync::RwLock;
 use tracing::{info, warn, Level};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -71,7 +72,6 @@ async fn main() -> anyhow::Result<()> {
 
 /// Start HTTP server for health checks and metrics
 async fn start_health_server(_state: Arc<AppState>) -> anyhow::Result<()> {
-    use axum::{routing::get, Json, Router};
     use std::net::SocketAddr;
 
     let app = Router::new()

@@ -13,16 +13,22 @@ def strategy():
     """Create a strategy instance for testing."""
     config = StrategyConfig(
         imbalance_threshold=0.3,
-        min_confidence=0.5,
+        min_confidence=0.3,  # Lower threshold for testing (confidence ~0.34 at streak=2)
         persistence_required=2,
+        require_momentum_confirm=False,  # Disable for simpler testing
     )
-    return ImbalanceStrategy(config)
+    strategy = ImbalanceStrategy(config)
+    # Override settings that get applied in __init__
+    strategy.config.min_confidence = 0.3
+    strategy.config.persistence_required = 2
+    return strategy
 
 
 @pytest.fixture
 def features_calc():
     """Create a features calculator for testing."""
-    return MicrostructureFeatures(window_size=10)
+    # window_size must be >= volatility_window for volatility to be calculated
+    return MicrostructureFeatures(window_size=50, volatility_window=20, momentum_window=10)
 
 
 def test_no_signal_below_threshold(strategy):

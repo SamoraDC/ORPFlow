@@ -83,7 +83,7 @@ let check_position_size ~symbol ~current_position ~order_qty ~order_side config 
     Approved
 
 (** Check total exposure *)
-let check_total_exposure ~positions ~order_value config =
+let check_total_exposure ~(positions:position list) ~order_value config =
   let total_exposure = List.fold_left (fun acc pos ->
     Decimal.(acc + Decimal.abs pos.quantity)
   ) Decimal.zero positions in
@@ -131,7 +131,7 @@ let update_rate_limit t =
     { t with orders_last_minute = t.orders_last_minute + 1; last_order_time = now }
 
 (** Main risk check function *)
-let check_order ~(order:order) ~account ~positions ~current_position t =
+let check_order ~(order:order) ~account ~(positions:position list) ~current_position t =
   (* Check circuit breaker first *)
   if t.circuit_breaker_active then
     Rejected (Printf.sprintf "Circuit breaker active: %s"

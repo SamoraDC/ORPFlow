@@ -6,7 +6,7 @@ use std::path::Path;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::error::{MarketDataError, Result};
 use crate::orderbook::OrderBookState;

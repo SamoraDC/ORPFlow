@@ -1,0 +1,41 @@
+# Deploy to Render
+# Note: Render has native GitHub integration, so this workflow is optional.
+# You can simply connect your repo in Render Dashboard for auto-deploys.
+
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Deploy Hook
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "Deploy triggered successfully!"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not configured. Using Render's native auto-deploy."
+          fi
+
+      - name: Wait for deployment
+        run: sleep 60
+
+      - name: Health Check
+        run: |
+          if [ -n "${{ secrets.RENDER_SERVICE_URL }}" ]; then
+            response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_SERVICE_URL }}/health" || echo "000")
+            if [ "$response" = "200" ]; then
+              echo "✅ Health check passed!"
+            else
+              echo "⚠️ Health check returned: $response (may still be deploying)"
+            fi
+          else
+            echo "RENDER_SERVICE_URL not configured. Skipping health check."
+          fi

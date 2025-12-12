@@ -1,0 +1,62 @@
+# Render Blueprint - QuantumFlow HFT Paper Trading
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Main Trading Service (Background Worker - never sleeps)
+  - type: worker
+    name: quantumflow-trading
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: oregon  # Closest to major exchanges
+    plan: starter   # $7/month - always on, no spin-down
+
+    # Environment Variables
+    envVars:
+      - key: RUST_LOG
+        value: info
+      - key: SYMBOLS
+        value: BTCUSDT,ETHUSDT
+      - key: DATABASE_URL
+        value: sqlite:///data/trades.db
+      - key: TIMEZONE
+        value: America/Sao_Paulo
+      - key: IPC_SOCKET_PATH
+        value: /tmp/quantumflow.sock
+      - key: RISK_MAX_POSITION
+        value: "1.0"
+      - key: RISK_MAX_DRAWDOWN
+        value: "0.05"
+      - key: PAPER_TRADING
+        value: "true"
+      # Telegram notifications (optional - set in dashboard)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false  # Must be set manually in dashboard
+      - key: TELEGRAM_CHAT_ID
+        sync: false  # Must be set manually in dashboard
+
+    # Persistent disk for database
+    disk:
+      name: quantumflow-data
+      mountPath: /data
+      sizeGB: 1
+
+  # Web Dashboard & API (optional - can use free tier)
+  - type: web
+    name: quantumflow-dashboard
+    runtime: docker
+    dockerfilePath: ./strategy/Dockerfile.api
+    dockerContext: ./strategy
+    region: oregon
+    plan: free  # Will spin down after 15min inactivity (OK for dashboard)
+
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///data/trades.db
+      - key: PORT
+        value: "8000"
+
+    healthCheckPath: /health
+
+    # Auto-deploy on push to main
+    autoDeploy: true

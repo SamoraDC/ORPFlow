@@ -113,6 +113,7 @@ impl WebSocketClient {
     }
 
     /// Send a ping to keep connection alive
+    #[allow(dead_code)]
     pub async fn ping(&mut self) -> Result<()> {
         if let Some(stream) = self.stream.as_mut() {
             stream
@@ -124,11 +125,13 @@ impl WebSocketClient {
     }
 
     /// Check if connected
+    #[allow(dead_code)]
     pub fn is_connected(&self) -> bool {
         self.stream.is_some()
     }
 
     /// Close the connection
+    #[allow(dead_code)]
     pub async fn close(&mut self) {
         if let Some(mut stream) = self.stream.take() {
             let _ = stream.close(None).await;

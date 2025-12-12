@@ -39,6 +39,7 @@ pub struct DepthUpdate {
 }
 
 /// Binance trade message
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct Trade {
     /// Event type

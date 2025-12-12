@@ -98,8 +98,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy Rust binary
-COPY --from=rust-builder /app/market-data/target/release/market-data /app/bin/market-data
+# Copy Rust binary (binary name is package name from Cargo.toml)
+COPY --from=rust-builder /app/market-data/target/release/orp-flow-market-data /app/bin/market-data
 
 # Copy OCaml binary
 COPY --from=ocaml-builder /home/opam/app/_build/default/bin/risk_gateway.exe /app/bin/risk_gateway

@@ -142,6 +142,7 @@ let check_order ~(order:order) ~account ~positions ~current_position t =
       (fun () -> check_rate_limit t);
       (fun () -> check_min_balance account t.config);
       (fun () -> check_drawdown account t.config);
+      (fun () -> check_total_exposure ~positions ~order_value:order.quantity t.config);
       (fun () -> check_position_size
         ~symbol:order.symbol
         ~current_position
@@ -159,10 +160,27 @@ let check_order ~(order:order) ~account ~positions ~current_position t =
     run_checks checks
 
 (** Calculate maximum safe order size given current state *)
-let max_safe_order_size ~symbol ~side ~account ~current_position t =
-  let position_room = Decimal.(t.config.max_position_size - Decimal.abs current_position) in
-  let balance_room = Decimal.(account.balance * of_float 0.95) in  (* Keep 5% buffer *)
+let max_safe_order_size ~symbol:_ ~side ~account ~current_position t =
   let open Decimal in
+  (* Calculate position room based on side:
+     - For Buy: we're adding to long position or reducing short
+     - For Sell: we're adding to short position or reducing long *)
+  let max_pos = t.config.max_position_size in
+  let position_room = match side with
+    | Buy ->
+      (* If current_position is negative (short), buying gives us more room *)
+      if is_negative current_position then
+        max_pos + Decimal.abs current_position
+      else
+        max_pos - current_position
+    | Sell ->
+      (* If current_position is positive (long), selling gives us more room *)
+      if is_positive current_position then
+        max_pos + current_position
+      else
+        max_pos - Decimal.abs current_position
+  in
+  let balance_room = account.balance * of_float 0.95 in  (* Keep 5% buffer *)
   if position_room < zero then zero
   else if position_room < balance_room then position_room
   else balance_room

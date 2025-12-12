@@ -114,6 +114,7 @@ COPY --from=ocaml-builder /home/opam/app/_build/default/bin/risk_gateway.exe /ap
 
 # Copy Python application
 COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY strategy/__init__.py /app/strategy/__init__.py
 COPY strategy/src /app/strategy/src
 
 # Copy supervisor configuration

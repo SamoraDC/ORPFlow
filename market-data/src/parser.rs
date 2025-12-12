@@ -147,7 +147,10 @@ impl ParsedMessage {
         Ok(ParsedMessage::Unknown(raw.to_string()))
     }
 
-    fn parse_stream_data(stream: &str, data: &serde_json::Value) -> Result<Self, serde_json::Error> {
+    fn parse_stream_data(
+        stream: &str,
+        data: &serde_json::Value,
+    ) -> Result<Self, serde_json::Error> {
         if stream.contains("depth") {
             let depth: DepthUpdate = serde_json::from_value(data.clone())?;
             Ok(ParsedMessage::DepthUpdate(depth))

@@ -1,11 +1,11 @@
 [package]
-name = "market-data"
+name = "orp-flow-market-data"
 version = "0.1.0"
 edition = "2021"
 authors = ["SamoraDC"]
-description = "High-performance market data handler for QuantumFlow HFT"
+description = "High-performance market data handler for ORPflow HFT (OCaml + Rust + Python)"
 license = "MIT"
-repository = "https://github.com/SamoraDC/quantumflow-hft"
+repository = "https://github.com/SamoraDC/ORPflow"
 
 [dependencies]
 # Async runtime

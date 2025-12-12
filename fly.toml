@@ -1,7 +1,7 @@
-# Fly.io Configuration for QuantumFlow HFT Paper Trading
+# Fly.io Configuration for ORPflow HFT Paper Trading (DEPRECATED - use Render instead)
 # https://fly.io/docs/reference/configuration/
 
-app = "quantumflow-hft"
+app = "orp-flow-hft"
 primary_region = "gru"  # Sao Paulo, Brazil - closest to Binance servers
 
 [build]
@@ -12,7 +12,7 @@ primary_region = "gru"  # Sao Paulo, Brazil - closest to Binance servers
   SYMBOLS = "BTCUSDT,ETHUSDT"
   DATABASE_URL = "sqlite:///data/trades.db"
   TIMEZONE = "America/Sao_Paulo"
-  IPC_SOCKET_PATH = "/tmp/quantumflow.sock"
+  IPC_SOCKET_PATH = "/tmp/orp-flow.sock"
   RISK_MAX_POSITION = "1.0"
   RISK_MAX_DRAWDOWN = "0.05"
 
@@ -37,7 +37,7 @@ primary_region = "gru"  # Sao Paulo, Brazil - closest to Binance servers
   cpus = 1
 
 [mounts]
-  source = "quantumflow_data"
+  source = "orp_flow_data"
   destination = "/data"
   initial_size = "1gb"
 

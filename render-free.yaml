@@ -1,11 +1,12 @@
-# Render Blueprint - FREE TIER (with limitations)
+# Render Blueprint - ORPflow FREE TIER (with limitations)
+# OCaml + Rust + Python Flow
 # ⚠️ WARNING: Free tier spins down after 15min of inactivity
 # This means WebSocket connections will be lost and you'll miss trades
 # Use this only for testing, not for continuous paper trading
 
 services:
   - type: web
-    name: quantumflow-free
+    name: orp-flow-free
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -22,7 +23,7 @@ services:
       - key: TIMEZONE
         value: America/Sao_Paulo
       - key: IPC_SOCKET_PATH
-        value: /tmp/quantumflow.sock
+        value: /tmp/orp-flow.sock
       - key: RISK_MAX_POSITION
         value: "1.0"
       - key: RISK_MAX_DRAWDOWN

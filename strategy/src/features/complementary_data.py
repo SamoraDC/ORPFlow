@@ -113,7 +113,7 @@ class ComplementaryDataProvider:
 
     def __init__(
         self,
-        symbols: List[str] = None,
+        symbols: Optional[List[str]] = None,
         funding_update_interval: int = 300,  # 5 minutes
         oi_update_interval: int = 60,  # 1 minute
         liquidation_window: int = 300,  # Track last 5 minutes

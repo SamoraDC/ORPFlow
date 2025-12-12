@@ -15,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Iterator
+from typing import Optional, Dict, Any, List, Iterator, IO, Union
 import asyncio
 
 import structlog
@@ -78,9 +78,9 @@ class ReplayEvent:
         }
 
     @staticmethod
-    def _serialize_data(data: dict) -> dict:
+    def _serialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         """Serialize data, handling Decimal and datetime."""
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, Decimal):
                 result[key] = {"__decimal__": str(value)}
@@ -111,9 +111,9 @@ class ReplayEvent:
         )
 
     @staticmethod
-    def _deserialize_data(data: dict) -> dict:
+    def _deserialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         """Deserialize data, restoring Decimal and datetime."""
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, dict):
                 if "__decimal__" in value:
@@ -163,7 +163,7 @@ class ReplayLogger:
         self._sequence = 0
         self._buffer: List[ReplayEvent] = []
         self._current_file: Optional[Path] = None
-        self._file_handle = None
+        self._file_handle: Optional[IO[str]] = None
         self._running = False
         self._flush_task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
@@ -271,11 +271,12 @@ class ReplayLogger:
                     self._rotate_file()
 
             # Write events
-            for event in events_to_write:
-                line = json.dumps(event.to_dict()) + "\n"
-                self._file_handle.write(line)
+            if self._file_handle is not None:
+                for event in events_to_write:
+                    line = json.dumps(event.to_dict()) + "\n"
+                    self._file_handle.write(line)
 
-            self._file_handle.flush()
+                self._file_handle.flush()
 
         except Exception as e:
             logger.error("replay_write_error", error=str(e))

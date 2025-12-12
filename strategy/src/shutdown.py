@@ -82,7 +82,7 @@ class GracefulShutdown:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(
                 sig,
-                lambda s=sig: asyncio.create_task(self._handle_signal(s)),
+                lambda s=sig: asyncio.create_task(self._handle_signal(s)),  # type: ignore[misc]
             )
 
         logger.info("signal_handlers_registered")

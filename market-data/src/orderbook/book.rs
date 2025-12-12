@@ -168,7 +168,12 @@ impl OrderBook {
 
     /// Calculate weighted imbalance (closer to mid weighted more)
     pub fn weighted_imbalance(&self, levels: usize, decay: Decimal) -> Option<Decimal> {
-        let mid = self.mid_price()?;
+        let _mid = self.mid_price()?;
+
+        // Helper to calculate decay^i without maths feature
+        let pow = |exp: usize| -> Decimal {
+            (0..exp).fold(Decimal::ONE, |acc, _| acc * decay)
+        };
 
         let bid_weighted: Decimal = self
             .bids
@@ -176,7 +181,7 @@ impl OrderBook {
             .take(levels)
             .enumerate()
             .map(|(i, (_, q))| {
-                let weight = decay.powd(Decimal::from(i as i64));
+                let weight = pow(i);
                 *q * weight
             })
             .sum();
@@ -187,7 +192,7 @@ impl OrderBook {
             .take(levels)
             .enumerate()
             .map(|(i, (_, q))| {
-                let weight = decay.powd(Decimal::from(i as i64));
+                let weight = pow(i);
                 *q * weight
             })
             .sum();
@@ -242,7 +247,8 @@ impl OrderBook {
             mid_price: self.mid_price(),
             spread_bps: self.spread_bps(),
             imbalance: self.imbalance(5),
-            weighted_imbalance: self.weighted_imbalance(10, Decimal::from_str_exact("0.9").unwrap()),
+            weighted_imbalance: self
+                .weighted_imbalance(10, Decimal::from_str_exact("0.9").unwrap()),
             bid_depth: self.bids.values().copied().sum(),
             ask_depth: self.asks.values().copied().sum(),
             bid_levels: self.bids.len(),

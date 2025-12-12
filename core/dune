@@ -1,5 +1,5 @@
 (library
- (name quantumflow_core)
- (public_name quantumflow_core)
+ (name orp_flow_core)
+ (public_name orp_flow_core)
  (libraries core core_unix yojson lwt lwt.unix cohttp-lwt-unix)
- (preprocess (pps ppx_deriving ppx_deriving_yojson ppx_sexp_conv lwt_ppx)))
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq ppx_deriving.ord ppx_deriving_yojson ppx_sexp_conv lwt_ppx)))

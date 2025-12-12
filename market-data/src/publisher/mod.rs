@@ -3,11 +3,10 @@
 //! Publishes order book state to other system components.
 
 use std::path::Path;
-use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::error::{MarketDataError, Result};
 use crate::orderbook::OrderBookState;

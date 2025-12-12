@@ -1,10 +1,12 @@
-# QuantumFlow HFT Paper Trading
+# ORPflow - HFT Paper Trading
 
-[![CI](https://github.com/SamoraDC/quantumflow-hft/actions/workflows/ci.yml/badge.svg)](https://github.com/SamoraDC/quantumflow-hft/actions/workflows/ci.yml)
-[![Deploy](https://github.com/SamoraDC/quantumflow-hft/actions/workflows/deploy.yml/badge.svg)](https://github.com/SamoraDC/quantumflow-hft/actions/workflows/deploy.yml)
+> **O**Caml + **R**ust + **P**ython Flow
+
+[![CI](https://github.com/SamoraDC/ORPflow/actions/workflows/ci.yml/badge.svg)](https://github.com/SamoraDC/ORPflow/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7)](https://render.com)
 
-A high-frequency paper trading system demonstrating multi-language systems engineering with Rust, OCaml, and Python. Designed as a portfolio project showcasing low-latency market data processing, type-safe risk management, and quantitative trading strategies.
+A high-frequency paper trading system demonstrating multi-language systems engineering with **OCaml**, **Rust**, and **Python**. Designed as a portfolio project showcasing low-latency market data processing, type-safe risk management, and quantitative trading strategies.
 
 ## Features
 
@@ -14,7 +16,7 @@ A high-frequency paper trading system demonstrating multi-language systems engin
 - **Paper Trading**: Realistic execution simulation with slippage, market impact, and fees
 - **Shabbat Pause**: Automatic trading pause from Friday to Saturday sunset
 - **Live Dashboard**: Auto-updating README with performance charts via GitHub Actions
-- **Free Deployment**: Runs 24/6 on Fly.io free tier
+- **Cloud Deployment**: Runs 24/6 on Render (starter plan $7/month for always-on)
 - **State Recovery**: Checkpointing with warm-up period on restart
 - **Safety Systems**: Kill switch, circuit breakers, rate limiting, sanity checks
 - **Complementary Data**: Funding rates, open interest, liquidation monitoring
@@ -64,8 +66,8 @@ A high-frequency paper trading system demonstrating multi-language systems engin
 
 ```bash
 # Clone the repository
-git clone https://github.com/SamoraDC/quantumflow-hft.git
-cd quantumflow-hft
+git clone https://github.com/SamoraDC/ORPflow.git
+cd ORPflow
 
 # Run setup script (installs all dependencies)
 ./scripts/setup-dev.sh
@@ -83,7 +85,7 @@ docker-compose up --build
 ## Project Structure
 
 ```
-quantumflow-hft/
+ORPflow/
 ├── market-data/          # Rust - WebSocket & order book
 │   └── src/
 │       ├── websocket/    # Connection management
@@ -117,7 +119,7 @@ quantumflow-hft/
 │
 └── .github/workflows/    # CI/CD
     ├── ci.yml            # Tests on every push
-    ├── deploy.yml        # Deploy to Fly.io
+    ├── deploy-render.yml # Deploy to Render
     ├── daily-report.yml  # Update charts daily
     └── health-check.yml  # Monitor every 15min
 ```
@@ -214,27 +216,27 @@ Track and compare strategy variations:
 
 ## Deployment
 
-### Deploy to Fly.io
+### Deploy to Render
 
-```bash
-# Install flyctl
-curl -L https://fly.io/install.sh | sh
+1. Create account at [render.com](https://render.com) (sign up with GitHub)
+2. Click **New +** → **Blueprint**
+3. Connect this repository
+4. Select `render.yaml` (paid, $7/month, always-on) or `render-free.yaml` (free, spins down)
+5. Click **Apply**
 
-# Login and deploy
-flyctl auth login
-flyctl launch
-flyctl deploy
-```
+### Environment Variables (set in Render Dashboard)
 
-### GitHub Actions Setup
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | No | For trade notifications |
+| `TELEGRAM_CHAT_ID` | No | Your Telegram chat ID |
 
-Add these secrets to your repository:
+### Telegram Setup (Optional)
 
-| Secret | Description |
-|--------|-------------|
-| `FLY_API_TOKEN` | Fly.io deployment token |
-| `TELEGRAM_BOT_TOKEN` | Optional: For notifications |
-| `TELEGRAM_CHAT_ID` | Optional: Telegram chat ID |
+1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → Copy the token
+2. Message [@userinfobot](https://t.me/userinfobot) → Copy your ID
+3. Start a chat with your bot
+4. Add tokens to Render Dashboard → Environment
 
 ## API Endpoints
 
@@ -323,4 +325,4 @@ This software is provided "as is" without warranty of any kind. The authors are 
 
 ---
 
-Built with Rust, OCaml, and Python
+Built with **O**Caml, **R**ust, and **P**ython - **ORPflow**

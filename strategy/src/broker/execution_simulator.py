@@ -331,11 +331,11 @@ class ExecutionSimulator:
         if side == Side.BUY:
             levels = orderbook.bids
             # For buy orders, being at a higher price is better
-            price_levels_ahead = sum(1 for l in levels if l.price > price)
+            price_levels_ahead = sum(1 for level in levels if level.price > price)
         else:
             levels = orderbook.asks
             # For sell orders, being at a lower price is better
-            price_levels_ahead = sum(1 for l in levels if l.price < price)
+            price_levels_ahead = sum(1 for level in levels if level.price < price)
 
         if not levels:
             return 0.5

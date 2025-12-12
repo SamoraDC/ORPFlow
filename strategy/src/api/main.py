@@ -6,6 +6,7 @@ Provides REST API for health checks, account status, and manual controls.
 from contextlib import asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
+from collections.abc import AsyncIterator
 from typing import Any, Optional
 
 import structlog
@@ -32,7 +33,7 @@ scheduler: Optional[ShabbatScheduler] = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan manager."""
     global db, broker, features, strategy, scheduler
 
@@ -300,7 +301,7 @@ async def set_circuit_breaker(request: CircuitBreakerRequest) -> dict[str, Any]:
             return response.json()
     except Exception as e:
         logger.error("circuit_breaker_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ===========================================================================

@@ -1,5 +1,6 @@
-# QuantumFlow HFT Paper Trading - Multi-stage Dockerfile
-# Combines Rust, OCaml, and Python components into a single optimized image
+# ORPflow HFT Paper Trading - Multi-stage Dockerfile
+# OCaml + Rust + Python Flow
+# Combines all three language components into a single optimized image
 
 # ============================================================================
 # Stage 1: Rust Builder
@@ -13,18 +14,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app/market-data
 
-# Copy manifests first for caching
-COPY market-data/Cargo.toml market-data/Cargo.lock ./
-
-# Create dummy main.rs for dependency caching
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release && rm -rf src
+# Copy Cargo.toml only (Cargo.lock generated during build)
+COPY market-data/Cargo.toml ./
 
 # Copy actual source code
 COPY market-data/src ./src
 
-# Build release binary
-RUN touch src/main.rs && cargo build --release
+# Build release binary (generates Cargo.lock automatically)
+RUN cargo build --release
 
 # ============================================================================
 # Stage 2: OCaml Builder
@@ -60,15 +57,25 @@ FROM python:3.11-slim-bookworm AS python-builder
 
 WORKDIR /app/strategy
 
-# Install build dependencies
-RUN pip install --no-cache-dir poetry
-
 # Copy dependency files
-COPY strategy/pyproject.toml strategy/poetry.lock* ./
+COPY strategy/pyproject.toml ./
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-interaction --no-ansi
+# Install dependencies directly with pip
+RUN pip install --no-cache-dir \
+    fastapi>=0.109.0 \
+    uvicorn[standard]>=0.27.0 \
+    httpx>=0.26.0 \
+    pydantic>=2.5.0 \
+    pydantic-settings>=2.1.0 \
+    numpy>=1.26.0 \
+    pandas>=2.1.0 \
+    sqlalchemy>=2.0.0 \
+    aiosqlite>=0.19.0 \
+    python-dotenv>=1.0.0 \
+    structlog>=24.1.0 \
+    astral>=3.2 \
+    pytz>=2024.1 \
+    msgpack>=1.0.0
 
 # Copy source code
 COPY strategy/src ./src

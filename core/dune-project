@@ -1,17 +1,17 @@
 (lang dune 3.0)
-(name quantumflow_core)
+(name orp_flow_core)
 (version 0.1.0)
 (generate_opam_files true)
 
-(source (github SamoraDC/quantumflow-hft))
+(source (github SamoraDC/ORPflow))
 (license MIT)
 (authors "SamoraDC")
 (maintainers "SamoraDC")
 
 (package
- (name quantumflow_core)
- (synopsis "QuantumFlow HFT Core - Risk Engine and Order Book Types")
- (description "Type-safe core components for the QuantumFlow HFT paper trading system")
+ (name orp_flow_core)
+ (synopsis "ORPflow HFT Core - Risk Engine and Order Book Types")
+ (description "Type-safe core components for the ORPflow HFT paper trading system (OCaml + Rust + Python)")
  (depends
   (ocaml (>= 5.0))
   dune

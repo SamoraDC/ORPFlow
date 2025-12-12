@@ -20,6 +20,9 @@ COPY market-data/Cargo.toml ./
 # Copy actual source code
 COPY market-data/src ./src
 
+# Copy benchmarks (required by Cargo.toml)
+COPY market-data/benches ./benches
+
 # Build release binary (generates Cargo.lock automatically)
 RUN cargo build --release
 

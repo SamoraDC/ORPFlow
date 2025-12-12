@@ -40,7 +40,10 @@ impl WebSocketClient {
             .iter()
             .flat_map(|s| {
                 let s_lower = s.to_lowercase();
-                vec![format!("{}@depth@100ms", s_lower), format!("{}@trade", s_lower)]
+                vec![
+                    format!("{}@depth@100ms", s_lower),
+                    format!("{}@trade", s_lower),
+                ]
             })
             .collect();
 
@@ -89,7 +92,9 @@ impl WebSocketClient {
             Some(Ok(Message::Close(frame))) => {
                 warn!(frame = ?frame, "Received close frame");
                 self.stream = None;
-                Err(MarketDataError::WebSocketConnection("Connection closed".to_string()))
+                Err(MarketDataError::WebSocketConnection(
+                    "Connection closed".to_string(),
+                ))
             }
             Some(Ok(Message::Frame(_))) => Ok(None),
             Some(Err(e)) => {
@@ -100,7 +105,9 @@ impl WebSocketClient {
             None => {
                 warn!("WebSocket stream ended");
                 self.stream = None;
-                Err(MarketDataError::WebSocketConnection("Stream ended".to_string()))
+                Err(MarketDataError::WebSocketConnection(
+                    "Stream ended".to_string(),
+                ))
             }
         }
     }

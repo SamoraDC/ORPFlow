@@ -24,10 +24,7 @@ pub struct WebSocketManager {
 impl WebSocketManager {
     /// Create a new WebSocket manager
     pub fn new(state: Arc<AppState>) -> Self {
-        let client = WebSocketClient::new(
-            &state.config.ws_endpoint,
-            state.config.symbols.clone(),
-        );
+        let client = WebSocketClient::new(&state.config.ws_endpoint, state.config.symbols.clone());
 
         Self {
             state,
@@ -54,7 +51,8 @@ impl WebSocketManager {
                     }
 
                     let delay = Duration::from_millis(
-                        self.state.config.reconnect_delay_ms * 2u64.pow(self.reconnect_attempts.min(5)),
+                        self.state.config.reconnect_delay_ms
+                            * 2u64.pow(self.reconnect_attempts.min(5)),
                     );
                     warn!(attempt = self.reconnect_attempts, delay_ms = ?delay, "Reconnecting...");
                     sleep(delay).await;
@@ -120,9 +118,7 @@ impl WebSocketManager {
         for symbol in &self.state.config.symbols {
             let url = format!(
                 "{}/depth?symbol={}&limit={}",
-                self.state.config.rest_endpoint,
-                symbol,
-                self.state.config.depth_levels
+                self.state.config.rest_endpoint, symbol, self.state.config.depth_levels
             );
 
             info!(symbol = %symbol, url = %url, "Fetching order book snapshot");

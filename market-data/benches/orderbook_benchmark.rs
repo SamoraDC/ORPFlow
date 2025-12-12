@@ -35,18 +35,14 @@ fn create_update(base_id: u64) -> DepthUpdate {
         symbol: "BTCUSDT".to_string(),
         first_update_id: base_id,
         final_update_id: base_id + 1,
-        bids: vec![
-            PriceLevel {
-                price: Decimal::from(49999),
-                quantity: Decimal::from_str("2.0").unwrap(),
-            },
-        ],
-        asks: vec![
-            PriceLevel {
-                price: Decimal::from(50001),
-                quantity: Decimal::from_str("2.5").unwrap(),
-            },
-        ],
+        bids: vec![PriceLevel {
+            price: Decimal::from(49999),
+            quantity: Decimal::from_str("2.0").unwrap(),
+        }],
+        asks: vec![PriceLevel {
+            price: Decimal::from(50001),
+            quantity: Decimal::from_str("2.5").unwrap(),
+        }],
     }
 }
 

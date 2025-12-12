@@ -242,7 +242,8 @@ impl OrderBook {
             mid_price: self.mid_price(),
             spread_bps: self.spread_bps(),
             imbalance: self.imbalance(5),
-            weighted_imbalance: self.weighted_imbalance(10, Decimal::from_str_exact("0.9").unwrap()),
+            weighted_imbalance: self
+                .weighted_imbalance(10, Decimal::from_str_exact("0.9").unwrap()),
             bid_depth: self.bids.values().copied().sum(),
             ask_depth: self.asks.values().copied().sum(),
             bid_levels: self.bids.len(),

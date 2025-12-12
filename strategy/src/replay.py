@@ -78,9 +78,9 @@ class ReplayEvent:
         }
 
     @staticmethod
-    def _serialize_data(data: dict) -> dict:
+    def _serialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         """Serialize data, handling Decimal and datetime."""
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, Decimal):
                 result[key] = {"__decimal__": str(value)}
@@ -111,9 +111,9 @@ class ReplayEvent:
         )
 
     @staticmethod
-    def _deserialize_data(data: dict) -> dict:
+    def _deserialize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         """Deserialize data, restoring Decimal and datetime."""
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, dict):
                 if "__decimal__" in value:

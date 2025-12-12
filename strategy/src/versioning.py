@@ -321,7 +321,7 @@ class VersionManager:
                 })
 
         # Sort by total P&L
-        comparisons.sort(key=lambda x: Decimal(x["total_pnl"]), reverse=True)
+        comparisons.sort(key=lambda x: Decimal(str(x["total_pnl"])), reverse=True)
 
         return comparisons
 

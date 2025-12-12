@@ -168,7 +168,7 @@ impl OrderBook {
 
     /// Calculate weighted imbalance (closer to mid weighted more)
     pub fn weighted_imbalance(&self, levels: usize, decay: Decimal) -> Option<Decimal> {
-        let mid = self.mid_price()?;
+        let _mid = self.mid_price()?;
 
         // Helper to calculate decay^i without maths feature
         let pow = |exp: usize| -> Decimal {

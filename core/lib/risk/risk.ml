@@ -131,7 +131,7 @@ let update_rate_limit t =
     { t with orders_last_minute = t.orders_last_minute + 1; last_order_time = now }
 
 (** Main risk check function *)
-let check_order ~order ~account ~positions ~current_position t =
+let check_order ~(order:order) ~account ~positions ~current_position t =
   (* Check circuit breaker first *)
   if t.circuit_breaker_active then
     Rejected (Printf.sprintf "Circuit breaker active: %s"

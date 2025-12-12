@@ -62,8 +62,8 @@ module Decimal = struct
   let abs t = { t with value = Int64.abs t.value }
   let neg t = { t with value = Int64.neg t.value }
   let is_zero t = Int64.equal t.value 0L
-  let is_positive t = Int64.compare t.value 0L > 0
-  let is_negative t = Int64.compare t.value 0L < 0
+  let is_positive t = (Int64.compare t.value 0L) > 0
+  let is_negative t = (Int64.compare t.value 0L) < 0
 end
 
 (** Symbol representing a trading pair *)

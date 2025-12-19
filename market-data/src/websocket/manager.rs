@@ -3,20 +3,26 @@
 //! Handles reconnection logic and message dispatch.
 
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::{interval, sleep};
+use std::time::{Duration, Instant};
+use tokio::time::{interval, sleep, timeout};
 use tracing::{error, info, warn};
 
 use super::WebSocketClient;
-use crate::error::{MarketDataError, Result};
+use crate::error::Result;
 use crate::parser::{OrderBookSnapshot, ParsedMessage};
 use crate::AppState;
+
+/// Maximum backoff delay in milliseconds (60 seconds)
+const MAX_BACKOFF_MS: u64 = 60_000;
+/// Cooldown period after which reconnect attempts are reset (5 minutes)
+const RECONNECT_COOLDOWN_SECS: u64 = 300;
 
 /// Manages WebSocket connections with automatic reconnection
 pub struct WebSocketManager {
     state: Arc<AppState>,
     client: WebSocketClient,
     reconnect_attempts: u32,
+    last_successful_connection: Option<Instant>,
 }
 
 impl WebSocketManager {
@@ -28,54 +34,73 @@ impl WebSocketManager {
             state,
             client,
             reconnect_attempts: 0,
+            last_successful_connection: None,
         }
     }
 
-    /// Run the WebSocket manager
+    /// Run the WebSocket manager - runs indefinitely with automatic reconnection
     pub async fn run(&mut self) -> Result<()> {
+        info!("Starting WebSocket manager with infinite retry");
+
         loop {
+            // Reset reconnect attempts if we've been stable for a while
+            if let Some(last_success) = self.last_successful_connection {
+                if last_success.elapsed() > Duration::from_secs(RECONNECT_COOLDOWN_SECS) {
+                    if self.reconnect_attempts > 0 {
+                        info!(
+                            previous_attempts = self.reconnect_attempts,
+                            "Resetting reconnect counter after cooldown period"
+                        );
+                        self.reconnect_attempts = 0;
+                    }
+                }
+            }
+
             match self.connect_and_process().await {
                 Ok(()) => {
-                    info!("WebSocket processing completed normally");
-                    break;
+                    info!("WebSocket processing completed normally, reconnecting...");
+                    // Brief pause before reconnecting after normal completion
+                    sleep(Duration::from_secs(1)).await;
                 }
                 Err(e) => {
                     error!(error = %e, "WebSocket error");
-
                     self.reconnect_attempts += 1;
-                    if self.reconnect_attempts > self.state.config.max_reconnect_attempts {
-                        error!("Max reconnection attempts exceeded");
-                        return Err(MarketDataError::MaxReconnectAttemptsExceeded);
-                    }
 
-                    let delay = Duration::from_millis(
-                        self.state.config.reconnect_delay_ms
-                            * 2u64.pow(self.reconnect_attempts.min(5)),
+                    // Calculate delay with exponential backoff, capped at MAX_BACKOFF_MS
+                    let base_delay = self.state.config.reconnect_delay_ms
+                        * 2u64.pow(self.reconnect_attempts.min(6));
+                    let delay = Duration::from_millis(base_delay.min(MAX_BACKOFF_MS));
+
+                    warn!(
+                        attempt = self.reconnect_attempts,
+                        delay_secs = delay.as_secs(),
+                        "Reconnecting after error..."
                     );
-                    warn!(attempt = self.reconnect_attempts, delay_ms = ?delay, "Reconnecting...");
                     sleep(delay).await;
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Connect and process messages
     async fn connect_and_process(&mut self) -> Result<()> {
         // Connect to WebSocket
         self.client.connect().await?;
+
+        // Mark successful connection
+        self.last_successful_connection = Some(Instant::now());
         self.reconnect_attempts = 0;
+        info!("WebSocket connected successfully, resetting reconnect counter");
 
         // Fetch initial snapshots for all symbols
         self.fetch_snapshots().await?;
 
-        // Start health check task
+        // Start health check and status logging task
         let health_state = self.state.clone();
         tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(30));
+            let mut health_interval = interval(Duration::from_secs(30));
             loop {
-                interval.tick().await;
+                health_interval.tick().await;
                 // Health check logging
                 let books = health_state.orderbook_manager.read().await;
                 let symbols = books.symbols();
@@ -95,16 +120,45 @@ impl WebSocketManager {
             }
         });
 
-        // Process messages
+        // Process messages with keepalive
+        let mut last_message = Instant::now();
+        let keepalive_timeout = Duration::from_secs(30);
+        let recv_timeout = Duration::from_secs(45);
+
         loop {
-            match self.client.recv().await {
-                Ok(Some(text)) => {
+            // Use timeout to detect stale connections
+            match timeout(recv_timeout, self.client.recv()).await {
+                Ok(Ok(Some(text))) => {
+                    last_message = Instant::now();
                     if let Err(e) = self.process_message(&text).await {
                         warn!(error = %e, "Failed to process message");
                     }
                 }
-                Ok(None) => continue,
-                Err(e) => return Err(e),
+                Ok(Ok(None)) => {
+                    // Ping/pong or other non-data message
+                    // Send keepalive if no data received for a while
+                    if last_message.elapsed() > keepalive_timeout {
+                        if let Err(e) = self.client.ping().await {
+                            warn!(error = %e, "Failed to send keepalive ping");
+                        }
+                    }
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    // WebSocket error
+                    return Err(e);
+                }
+                Err(_) => {
+                    // Timeout - connection might be stale
+                    warn!(
+                        last_message_secs = last_message.elapsed().as_secs(),
+                        "No message received within timeout, sending keepalive"
+                    );
+                    if let Err(e) = self.client.ping().await {
+                        warn!(error = %e, "Failed to send keepalive ping, reconnecting");
+                        return Err(crate::error::MarketDataError::ConnectionTimeout);
+                    }
+                }
             }
         }
     }

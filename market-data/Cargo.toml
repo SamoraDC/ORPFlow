@@ -1,15 +1,15 @@
 [package]
 name = "orp-flow-market-data"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["SamoraDC"]
-description = "High-performance market data handler for ORPflow HFT (OCaml + Rust + Python)"
+description = "Ultra-low latency HFT system - Jane Street style (Rust-only hot path)"
 license = "MIT"
 repository = "https://github.com/SamoraDC/ORPflow"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.35", features = ["full", "rt-multi-thread", "macros", "sync", "time", "net"] }
+tokio = { version = "1.35", features = ["full", "rt-multi-thread", "macros", "sync", "time", "net", "fs"] }
 
 # WebSocket
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
@@ -24,6 +24,7 @@ serde_json = "1.0"
 
 # Data structures
 rust_decimal = { version = "1.33", features = ["serde", "serde-with-str"] }
+rust_decimal_macros = "1.33"
 ordered-float = { version = "4.2", features = ["serde"] }
 
 # Logging
@@ -48,16 +49,30 @@ dotenvy = "0.15"
 bytes = "1.5"
 rmp-serde = "1.1"  # MessagePack for efficient binary serialization
 
-# HTTP server for health checks
+# HTTP server for health checks and API
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Database (Strategy)
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# UUID generation (Strategy)
+uuid = { version = "1.7", features = ["v4"] }
+
+# ONNX Runtime for ML models (optional)
+ort = { version = "2.0.0-rc.10", optional = true }
+ndarray = { version = "0.15", optional = true }
+parking_lot = { version = "0.12", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tokio-test = "0.4"
 mockall = "0.12"
 tempfile = "3.9"
-rust_decimal_macros = "1.33"
+
+[features]
+default = []
+ml = ["ort", "ndarray", "parking_lot"]  # Enable ONNX ML support
 
 [[bench]]
 name = "orderbook_benchmark"

@@ -1,8 +1,8 @@
 //! Benchmarks for order book operations
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use market_data::orderbook::OrderBook;
-use market_data::parser::{DepthUpdate, OrderBookSnapshot, PriceLevel};
+use orp_flow_market_data::orderbook::OrderBook;
+use orp_flow_market_data::parser::{DepthUpdate, OrderBookSnapshot, PriceLevel};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 

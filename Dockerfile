@@ -117,6 +117,9 @@ COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/li
 COPY strategy/__init__.py /app/strategy/__init__.py
 COPY strategy/src /app/strategy/src
 
+# Set PYTHONPATH for strategy module imports
+ENV PYTHONPATH=/app
+
 # Copy supervisor configuration
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

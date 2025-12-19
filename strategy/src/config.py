@@ -3,12 +3,17 @@
 from functools import lru_cache
 from typing import List
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     # Database
     database_url: str = Field(default="sqlite:///data/trades.db")
@@ -50,9 +55,13 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    @field_validator("symbols", mode="before")
+    @classmethod
+    def parse_symbols(cls, v: str | List[str]) -> List[str]:
+        """Parse comma-separated symbols from environment variable."""
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
 
 
 @lru_cache

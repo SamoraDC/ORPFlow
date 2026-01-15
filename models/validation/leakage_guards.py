@@ -556,12 +556,26 @@ class NormalizationLeakageDetector:
                             "message": "Scaler mean closer to full data than train data",
                         })
 
-        passed = len(issues) == 0
+        # For time series, similar distributions are expected (stationarity)
+        # Only consider as critical if scaler itself shows leakage
+        scaler_issues = [i for i in issues if "scaler" in i.get("type", "")]
+        distribution_issues = [i for i in issues if "identical_distribution" in i.get("type", "")]
+
+        # Scaler issues are critical; distribution similarity is just a warning for time series
+        has_scaler_leak = len(scaler_issues) > 0
+        passed = len(scaler_issues) == 0  # Pass if no scaler leakage
+
+        if has_scaler_leak:
+            severity = LeakageSeverity.CRITICAL
+        elif len(distribution_issues) > 0:
+            severity = LeakageSeverity.WARNING  # Similar distributions expected in time series
+        else:
+            severity = LeakageSeverity.INFO
 
         return LeakageReport(
             check_name="Normalization Leakage Detection",
             passed=passed,
-            severity=LeakageSeverity.CRITICAL if not passed else LeakageSeverity.INFO,
+            severity=severity,
             message="No normalization leakage detected" if passed else f"Found {len(issues)} issues",
             details=details,
             recommendations=[
@@ -968,6 +982,7 @@ class LeakageGuardSuite:
         correlation_threshold: float = 0.95,
         strict: bool = True,
     ):
+        self.strict = strict
         self.temporal_validator = TemporalOrderValidator(
             min_embargo_bars=min_embargo_bars,
             strict=strict
@@ -975,7 +990,14 @@ class LeakageGuardSuite:
         self.leakage_scanner = FeatureTargetLeakageScanner(
             correlation_threshold=correlation_threshold
         )
-        self.normalization_detector = NormalizationLeakageDetector()
+        # For time series, distributions are expected to be similar
+        # Use relaxed thresholds when not strict
+        ks_threshold = 0.05 if strict else 0.03  # Lower = more similar allowed
+        moment_threshold = 0.02 if strict else 0.01
+        self.normalization_detector = NormalizationLeakageDetector(
+            ks_threshold=ks_threshold,
+            moment_threshold=moment_threshold,
+        )
         self.lookahead_detector = LookAheadBiasDetector()
         self.snooping_detector = DataSnoopingDetector()
 

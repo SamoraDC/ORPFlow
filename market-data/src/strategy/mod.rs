@@ -9,26 +9,38 @@
 //! - Paper broker for simulation
 //! - ONNX model support for ML signals
 //! - SQLite persistence for trade history
+//! - NSMI regime detection and dynamic weight adjustment
+//! - Zero-allocation inference pipeline
 
 mod broker;
 mod config;
 mod features;
 mod models;
+mod nsmi;
 mod signals;
 mod storage;
 
 #[cfg(feature = "ml")]
 mod ml_inference;
 
+#[cfg(feature = "ml")]
+mod inference_pipeline;
+
 pub use broker::PaperBroker;
 pub use config::StrategyConfig;
 pub use features::MicrostructureFeatures;
 pub use models::{Account, Position, Trade};
+pub use nsmi::{NSMIConfig, NSMIFeatures, NSMIResult, NSMIState};
 pub use signals::ImbalanceStrategy;
 pub use storage::TradeStorage;
 
 #[cfg(feature = "ml")]
-pub use ml_inference::{ModelEnsemble, ModelType, OnnxModel, FeatureBuffer};
+pub use ml_inference::{
+    FeatureBuffer, ModelEnsemble, ModelType, NSMIAdjustedWeights, NSMIAugmentBuffer, OnnxModel,
+};
+
+#[cfg(feature = "ml")]
+pub use inference_pipeline::{InferenceConfig, InferencePipeline, InferenceResult, TradingSignal};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;

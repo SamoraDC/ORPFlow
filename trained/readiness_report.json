@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-01-15T20:40:04.484516",
+  "data_source": "/home/user/ORPFlow/data/raw/klines_90d.parquet",
+  "train_samples": 89407,
+  "val_samples": 16846,
+  "test_samples": 18142,
+  "results": [
+    {
+      "model": "lightgbm",
+      "mse": 5.002841270585811e-06,
+      "rmse": 0.0022367032146858043,
+      "r2": -2.6002743735986655e-05,
+      "direction_accuracy": 0.4954801014221144,
+      "sharpe_ratio": -2.0299577457659557,
+      "win_rate": 0.4954801014221144,
+      "max_drawdown": 0.6729437403386669,
+      "profit_factor": 0.9804771894881981,
+      "total_return": -0.3057521204890463,
+      "decision": "NO-GO",
+      "checks": {
+        "direction_accuracy": false,
+        "sharpe_positive": false,
+        "win_rate": true,
+        "profit_factor": true
+      }
+    },
+    {
+      "model": "xgboost",
+      "mse": 5.003075330023421e-06,
+      "rmse": 0.0022367555364910625,
+      "r2": -7.283687591552734e-05,
+      "direction_accuracy": 0.4966927571381325,
+      "sharpe_ratio": 0.39708565845367083,
+      "win_rate": 0.4966927571381325,
+      "max_drawdown": 0.48650670051574707,
+      "profit_factor": 1.0038641691207886,
+      "total_return": 0.05981108546257019,
+      "decision": "GO",
+      "checks": {
+        "direction_accuracy": false,
+        "sharpe_positive": true,
+        "win_rate": true,
+        "profit_factor": true
+      }
+    }
+  ],
+  "summary": {
+    "go_count": 1,
+    "total_count": 2,
+    "ready_for_deploy": false
+  }
+}

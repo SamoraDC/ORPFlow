@@ -108,7 +108,7 @@ class LSTMModel:
 
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="min", factor=0.5, patience=5, verbose=True
+            self.optimizer, mode="min", factor=0.5, patience=5
         )
         self.criterion = nn.MSELoss()
 
@@ -347,8 +347,8 @@ def main():
 
     from data.preprocessor import FeatureEngineer
 
-    # Load processed data
-    data_path = Path(__file__).parent.parent / "data" / "processed" / "features.parquet"
+    # Load processed data - data is at project root level
+    data_path = Path(__file__).parent.parent.parent / "data" / "processed" / "features.parquet"
 
     if not data_path.exists():
         logger.error("Processed features not found. Run preprocessor.py first.")
@@ -389,8 +389,8 @@ def main():
     # Evaluate
     test_metrics = model.evaluate(X_test, y_test)
 
-    # Save
-    model_dir = Path(__file__).parent.parent / "trained"
+    # Save - save to project root trained/ directory
+    model_dir = Path(__file__).parent.parent.parent / "trained"
     model_dir.mkdir(parents=True, exist_ok=True)
 
     model.save(str(model_dir / "lstm_model.pt"))

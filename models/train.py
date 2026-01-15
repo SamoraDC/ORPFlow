@@ -68,6 +68,7 @@ class TrainingOrchestrator:
 
     def collect_data(self) -> pd.DataFrame:
         """Collect historical market data"""
+        import asyncio
         from data.collector import BinanceDataCollector
 
         logger.info("Collecting market data...")
@@ -75,32 +76,60 @@ class TrainingOrchestrator:
         collector = BinanceDataCollector()
         data_config = self.config.get("data", {})
 
-        symbol = data_config.get("symbol", "BTCUSDT")
+        # Support both single symbol and list of symbols
+        symbols = data_config.get("symbols", ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"])
+        if isinstance(symbols, str):
+            symbols = [symbols]
         days = data_config.get("days", 90)
 
-        df = collector.get_historical_klines(symbol, days=days)
-
-        if df is not None and not df.empty:
-            collector.save_data(df, f"klines_{days}d.parquet")
-            logger.info(f"Collected {len(df)} rows for {symbol}")
-            return df
-
-        # Try to load existing data
+        # Try to load existing data first
         existing = collector.load_data(f"klines_{days}d.parquet")
         if not existing.empty:
             logger.info(f"Loaded existing data: {len(existing)} rows")
             return existing
 
+        # Collect new data using async method - pass list of symbols
+        df = asyncio.run(collector.collect_historical_klines(symbols=symbols, days=days))
+
+        if df is not None and not df.empty:
+            collector.save_data(df, f"klines_{days}d.parquet")
+            logger.info(f"Collected {len(df)} rows for {symbols}")
+            return df
+
         raise ValueError("No data available. Check Binance API connection.")
 
     def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess and engineer features"""
+        """Preprocess and engineer features - processes each symbol separately"""
         from data.preprocessor import FeatureEngineer
 
         logger.info("Preprocessing data and engineering features...")
 
         engineer = FeatureEngineer()
-        processed = engineer.process_symbol(df)
+
+        # Process each symbol separately to respect time boundaries
+        processed_dfs = []
+        symbols = df["symbol"].unique() if "symbol" in df.columns else ["default"]
+
+        for symbol in symbols:
+            if "symbol" in df.columns:
+                symbol_df = df[df["symbol"] == symbol].copy()
+            else:
+                symbol_df = df.copy()
+
+            symbol_df = symbol_df.sort_values("open_time")
+            logger.info(f"Processing {symbol}: {len(symbol_df)} rows")
+
+            processed_symbol = engineer.process_symbol(symbol_df)
+            if len(processed_symbol) > 0:
+                processed_dfs.append(processed_symbol)
+                logger.info(f"  -> {symbol}: {len(processed_symbol)} rows after processing")
+            else:
+                logger.warning(f"  -> {symbol}: No data remaining after processing")
+
+        if not processed_dfs:
+            raise ValueError("No data remaining after preprocessing")
+
+        processed = pd.concat(processed_dfs, ignore_index=True)
 
         output_path = Path("data/processed")
         output_path.mkdir(parents=True, exist_ok=True)

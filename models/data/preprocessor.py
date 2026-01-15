@@ -160,8 +160,13 @@ class FeatureEngineer:
             # Direction (classification target)
             df[f"target_direction_{h}"] = (df[f"target_return_{h}"] > 0).astype(int)
 
-            # Volatility target
-            df[f"target_vol_{h}"] = df["log_return"].shift(-1).rolling(window=h).std() * np.sqrt(252 * 24 * 60)
+            # Volatility target - realized volatility over next h periods
+            # For h=1, use absolute return as proxy (no rolling possible)
+            if h == 1:
+                df[f"target_vol_{h}"] = np.abs(df["log_return"].shift(-1)) * np.sqrt(252 * 24 * 60)
+            else:
+                # Forward-looking realized volatility: std of next h log returns
+                df[f"target_vol_{h}"] = df["log_return"].shift(-h).rolling(window=h).std() * np.sqrt(252 * 24 * 60)
 
         return df
 
@@ -193,10 +198,26 @@ class FeatureEngineer:
         df = self.calculate_targets(df)
         df = self.add_time_features(df)
 
-        # Drop NaN rows
+        # Replace inf with NaN
+        df = df.replace([np.inf, -np.inf], np.nan)
+
+        # Get feature and target columns
+        feature_cols = self.get_feature_columns(df)
+        target_cols = [c for c in df.columns if c.startswith("target_")]
+
+        # For features: forward fill the warmup period NaN, then backfill any remaining
+        df[feature_cols] = df[feature_cols].ffill().bfill()
+
+        # Drop rows where ANY target is NaN (end of data due to shift)
         initial_len = len(df)
-        df = df.dropna()
-        logger.info(f"Dropped {initial_len - len(df)} rows with NaN values")
+        df = df.dropna(subset=target_cols)
+        logger.info(f"Dropped {initial_len - len(df)} rows with NaN targets (end of series)")
+
+        # Final safety: drop any remaining NaN rows
+        remaining_nan = df[feature_cols + target_cols].isna().any(axis=1).sum()
+        if remaining_nan > 0:
+            logger.warning(f"Found {remaining_nan} remaining NaN rows, dropping...")
+            df = df.dropna(subset=feature_cols + target_cols)
 
         return df
 

@@ -69,6 +69,13 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tokio-test = "0.4"
 mockall = "0.12"
 tempfile = "3.9"
+# ONNX parity testing
+ort = "2.0.0-rc.10"
+
+[[test]]
+name = "onnx_parity_test"
+path = "tests/onnx_parity_test.rs"
+required-features = []
 
 [features]
 default = []

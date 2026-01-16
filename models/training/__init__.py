@@ -51,6 +51,26 @@ __all__ = [
     "TrainingOrchestrator",
 ]
 
+# Model-specific trainers
+try:
+    from .train_xgboost import XGBoostTrainer, XGBoostConfig
+    from .train_lightgbm import LightGBMTrainer, LightGBMConfig
+    from .train_lstm import LSTMTrainer, LSTMTrainingConfig
+    from .train_cnn import CNNTrainer, CNNTrainingConfig
+
+    __all__.extend([
+        "XGBoostTrainer",
+        "XGBoostConfig",
+        "LightGBMTrainer",
+        "LightGBMConfig",
+        "LSTMTrainer",
+        "LSTMTrainingConfig",
+        "CNNTrainer",
+        "CNNTrainingConfig",
+    ])
+except ImportError:
+    pass
+
 # Optional RL training components (require torch)
 try:
     from .rl_trainer import (

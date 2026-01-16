@@ -15,16 +15,15 @@ torch>=2.2.0
 torchvision>=0.17.0
 
 # Reinforcement Learning
-stable-baselines3>=2.2.0
+stable-baselines3>=2.3.0
 gymnasium>=0.29.0
-tianshou>=0.5.1
+tianshou>=1.0.0
 
 # ONNX Export
 onnx>=1.15.0
 onnxruntime>=1.17.0
 skl2onnx>=1.16.0
 onnxmltools>=1.12.0
-torch-onnx>=0.1.0
 
 # Data Collection
 python-binance>=1.0.19

@@ -1,0 +1,100 @@
+# LightGBM Training Configuration
+# ================================
+# Optimized for BTCUSDT 1-minute bars trading
+
+# Data settings
+data:
+  data_path: "data/processed/features.parquet"
+  target_column: "target_return_5"
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+# LightGBM hyperparameters
+model:
+  # Boosting type: gbdt, dart, or goss
+  boosting_type: "gbdt"  # Recommended: gbdt for stability, dart for regularization
+
+  # Core parameters
+  n_estimators: 1000
+  max_depth: 8
+  num_leaves: 63          # 2^max_depth - 1
+  learning_rate: 0.01
+
+  # Sampling
+  subsample: 0.8
+  subsample_freq: 1
+  colsample_bytree: 0.8
+
+  # Regularization
+  min_child_samples: 20
+  min_child_weight: 0.001
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+
+  # DART-specific parameters (only when boosting_type=dart)
+  dart:
+    drop_rate: 0.1
+    skip_drop: 0.5
+    max_drop: 50
+
+  # GOSS-specific parameters (only when boosting_type=goss)
+  goss:
+    top_rate: 0.2
+    other_rate: 0.1
+
+  # Early stopping
+  early_stopping_rounds: 50
+
+  # Objective
+  objective: "regression"
+  metric: "rmse"
+
+  # Performance
+  n_jobs: -1
+  random_state: 42
+  verbose: -1
+
+# CPCV (Combinatorial Purged Cross-Validation)
+cpcv:
+  enabled: true
+  n_splits: 5
+  n_test_groups: 2
+  embargo_pct: 0.01
+  purge_pct: 0.005
+
+# Optuna hyperparameter optimization
+optuna:
+  enabled: false
+  n_trials: 100
+  timeout: 7200
+
+  search_space:
+    boosting_type: ["gbdt", "dart"]
+    n_estimators: [500, 2000]
+    max_depth: [4, 12]
+    num_leaves: [31, 127]
+    learning_rate: [0.001, 0.1]
+    subsample: [0.6, 1.0]
+    colsample_bytree: [0.6, 1.0]
+    min_child_samples: [10, 50]
+    reg_alpha: [0.0, 1.0]
+    reg_lambda: [0.5, 2.0]
+
+# Feature selection
+features:
+  importance_threshold: 0.001
+  max_features: null
+
+# Output settings
+output:
+  output_dir: "trained"
+  model_name: "lightgbm_model"
+  export_onnx: true
+  save_feature_importance: true
+
+# Logging
+logging:
+  level: "INFO"
+  log_to_file: true
+  log_file: "logs/lightgbm_training.log"

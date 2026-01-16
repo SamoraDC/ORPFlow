@@ -1,0 +1,134 @@
+● TUDO PRONTO PARA TREINAMENTO
+
+  Status Final
+  ┌─────────────────────────────┬───────────────────────────────────┐
+  │            Item             │              Status               │
+  ├─────────────────────────────┼───────────────────────────────────┤
+  │ Dependências Python         │ Instaladas (venv com Python 3.12) │
+  ├─────────────────────────────┼───────────────────────────────────┤
+  │ Imports de módulos          │ 10/10 OK                          │
+  ├─────────────────────────────┼───────────────────────────────────┤
+  │ Integração ONNX Python→Rust │ Validada                          │
+  ├─────────────────────────────┼───────────────────────────────────┤
+  │ Compilação Rust com ML      │ OK                                │
+  └─────────────────────────────┴───────────────────────────────────┘
+  ---
+  Comandos para Treinamento
+
+  1. Ativar ambiente virtual
+
+  source .venv/bin/activate
+
+  2. Treinar TODOS os modelos (recomendado)
+
+  # Treina XGBoost, LightGBM, LSTM, CNN, D4PG, MARL
+  # Exporta para ONNX e roda testes de paridade
+  python scripts/train_all_models.py
+
+  3. Treinar modelos individualmente
+
+  # ML Models (mais rápidos)
+  python scripts/train_all_models.py --model xgboost
+  python scripts/train_all_models.py --model lightgbm
+
+  # DL Models
+  python scripts/train_all_models.py --model lstm
+  python scripts/train_all_models.py --model cnn
+
+  # RL Models (mais lentos)
+  python scripts/train_all_models.py --model d4pg
+  python scripts/train_all_models.py --model marl
+
+  4. Treinar sem exportar ONNX
+
+  python scripts/train_all_models.py --no-export
+
+  5. Apenas testes de paridade ONNX
+
+  python scripts/train_all_models.py --parity-only
+
+  ---
+  Comandos Rust (Hot Path)
+
+  Compilar com suporte ML
+
+  cd market-data
+  cargo build --release --features ml
+
+  Rodar testes de paridade Rust
+
+  cd market-data
+  cargo test --features ml onnx_parity
+
+  Executar paper trading
+
+  cd market-data
+  cargo run --release --features ml
+
+  ---
+  Estrutura de Saída Após Treinamento
+
+  trained/
+  ├── xgboost_model.json      # XGBoost nativo
+  ├── lightgbm_model.txt      # LightGBM nativo
+  ├── lstm_model.pt           # PyTorch checkpoint
+  ├── cnn_model.pt            # PyTorch checkpoint
+  ├── d4pg_evt_agent.pt       # D4PG agent
+  ├── marl_system.pt          # MARL system
+  └── onnx/                   # Para Rust consumir
+      ├── xgboost_model.onnx
+      ├── lightgbm_model.onnx
+      ├── lstm_model.onnx
+      ├── cnn_model.onnx
+      ├── d4pg_actor.onnx
+      ├── marl_agent_0.onnx
+      ├── marl_agent_1.onnx
+      ├── marl_agent_2.onnx
+      └── *.json              # Metadados
+
+  tests/golden_data/          # Dados de validação
+  ├── xgboost_golden.json
+  ├── lightgbm_golden.json
+  ├── lstm_golden.json
+  ├── cnn_golden.json
+  ├── d4pg_golden.json
+  └── marl_golden.json
+
+  ---
+  Fluxo Completo Python → Rust
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                     COLD PATH (Python)                          │
+  ├─────────────────────────────────────────────────────────────────┤
+  │  1. Carregar features.parquet (108 features, 12 targets)        │
+  │  2. Treinar com CPCV (anti-overfitting)                         │
+  │  3. Otimizar com Optuna (hyperparameters)                       │
+  │  4. Exportar para ONNX (opset 17)                               │
+  │  5. Validar paridade (tolerância 1e-5)                          │
+  │  6. Gerar golden data para testes Rust                          │
+  └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼ ONNX files
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                     HOT PATH (Rust)                             │
+  ├─────────────────────────────────────────────────────────────────┤
+  │  1. ModelEnsemble carrega ONNX via ort crate                    │
+  │  2. predict_ml() → XGBoost/LightGBM                             │
+  │  3. predict_sequence() → LSTM/CNN                               │
+  │  4. predict_action() → D4PG                                     │
+  │  5. predict_marl_action() → MARL                                │
+  │  6. NSMI ajusta pesos dinamicamente por regime                  │
+  │  7. Zero-allocation inference pipeline                          │
+  │  8. Paper trading em tempo real                                 │
+  └─────────────────────────────────────────────────────────────────┘
+
+  ---
+  Iniciar Treinamento Agora
+
+  # Comando único para treinar tudo
+  source .venv/bin/activate && python scripts/train_all_models.py
+
+  Estimativa de tempo:
+  - XGBoost/LightGBM: ~5-10 min cada
+  - LSTM/CNN: ~30-60 min cada (depende de GPU)
+  - D4PG/MARL: ~2-4 horas cada (RL é lento)

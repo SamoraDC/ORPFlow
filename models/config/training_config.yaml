@@ -1,0 +1,175 @@
+# ORPFlow ML/DL/RL Training Configuration
+# Jane Street Style - Train in Python, Infer in Rust via ONNX
+
+data:
+  symbols:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+  timeframe: "1m"
+  lookback_days: 90
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+
+features:
+  orderbook:
+    - mid_price
+    - spread_bps
+    - imbalance
+    - weighted_imbalance
+    - bid_depth
+    - ask_depth
+    - volume_ratio
+  derived:
+    - volatility
+    - momentum
+    - imbalance_momentum
+    - imbalance_z
+    - volatility_z
+  windows:
+    - 5
+    - 10
+    - 20
+    - 50
+    - 100
+
+# Machine Learning Models
+ml:
+  lightgbm:
+    enabled: true
+    params:
+      objective: "regression"
+      metric: "mse"
+      boosting_type: "gbdt"
+      num_leaves: 31
+      learning_rate: 0.05
+      feature_fraction: 0.9
+      bagging_fraction: 0.8
+      bagging_freq: 5
+      n_estimators: 1000
+      early_stopping_rounds: 50
+
+  xgboost:
+    enabled: true
+    params:
+      objective: "reg:squarederror"
+      eval_metric: "rmse"
+      max_depth: 6
+      learning_rate: 0.05
+      n_estimators: 1000
+      subsample: 0.8
+      colsample_bytree: 0.8
+      early_stopping_rounds: 50
+
+# Deep Learning Models
+dl:
+  lstm:
+    enabled: true
+    params:
+      input_size: 50  # Number of features
+      hidden_size: 128
+      num_layers: 2
+      dropout: 0.2
+      sequence_length: 60
+      batch_size: 64
+      learning_rate: 0.001
+      epochs: 100
+      patience: 10
+
+  cnn:
+    enabled: true
+    params:
+      input_channels: 1
+      sequence_length: 60
+      num_features: 50
+      conv_channels: [32, 64, 128]
+      kernel_sizes: [3, 3, 3]
+      fc_units: [256, 128]
+      dropout: 0.3
+      batch_size: 64
+      learning_rate: 0.001
+      epochs: 100
+      patience: 10
+
+# Reinforcement Learning Models
+rl:
+  d4pg_evt:
+    enabled: true
+    params:
+      # D4PG Parameters
+      actor_lr: 0.0001
+      critic_lr: 0.001
+      gamma: 0.99
+      tau: 0.005
+      n_atoms: 51
+      v_min: -10.0
+      v_max: 10.0
+      buffer_size: 1000000
+      batch_size: 256
+      n_step: 5
+      # EVT Parameters (Extreme Value Theory for risk)
+      evt_threshold_quantile: 0.95
+      evt_xi: 0.1  # Shape parameter
+      evt_sigma: 1.0  # Scale parameter
+      # Training
+      total_timesteps: 1000000
+      eval_freq: 10000
+
+  marl:
+    enabled: true
+    params:
+      # Multi-Agent Configuration
+      num_agents: 3
+      agent_types:
+        - trend_follower
+        - mean_reversion
+        - momentum
+      # Shared parameters
+      hidden_size: 256
+      learning_rate: 0.0003
+      gamma: 0.99
+      gae_lambda: 0.95
+      clip_range: 0.2
+      # Training
+      total_timesteps: 2000000
+      n_steps: 2048
+      batch_size: 64
+      n_epochs: 10
+
+# Model Selection & Ensemble
+ensemble:
+  method: "weighted_average"  # weighted_average, stacking, voting
+  performance_metric: "sharpe_ratio"
+  rebalance_frequency: "daily"
+  min_weight: 0.05
+  max_weight: 0.5
+
+# Validation
+validation:
+  walk_forward:
+    enabled: true
+    train_window: 60  # days
+    test_window: 5    # days
+    step_size: 5      # days
+
+  metrics:
+    - sharpe_ratio
+    - sortino_ratio
+    - max_drawdown
+    - win_rate
+    - profit_factor
+    - calmar_ratio
+
+# ONNX Export
+onnx:
+  output_dir: "trained/onnx"
+  opset_version: 17
+  optimize: true
+  quantize: false  # Enable for smaller models
+
+# Logging
+logging:
+  tensorboard: true
+  mlflow: true
+  log_dir: "logs"

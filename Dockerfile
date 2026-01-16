@@ -1,6 +1,6 @@
 # ORPflow HFT Paper Trading - Multi-stage Dockerfile
-# OCaml + Rust + Python Flow
-# Combines all three language components into a single optimized image
+# OCaml + Rust (Jane Street Style - No Python in Hot Path)
+# Single unified Rust binary handles market data + strategy + API
 
 # ============================================================================
 # Stage 1: Rust Builder
@@ -62,41 +62,11 @@ COPY --chown=opam:opam core/ .
 RUN eval $(opam env) && dune build --release
 
 # ============================================================================
-# Stage 3: Python Builder
+# Stage 3: Final Runtime Image (No Python - Jane Street Style)
 # ============================================================================
-FROM python:3.11-slim-bookworm AS python-builder
+FROM debian:bookworm-slim AS runtime
 
-WORKDIR /app/strategy
-
-# Copy dependency files
-COPY strategy/pyproject.toml ./
-
-# Install dependencies directly with pip
-RUN pip install --no-cache-dir \
-    fastapi>=0.109.0 \
-    uvicorn[standard]>=0.27.0 \
-    httpx>=0.26.0 \
-    pydantic>=2.5.0 \
-    pydantic-settings>=2.1.0 \
-    numpy>=1.26.0 \
-    pandas>=2.1.0 \
-    sqlalchemy>=2.0.0 \
-    aiosqlite>=0.19.0 \
-    python-dotenv>=1.0.0 \
-    structlog>=24.1.0 \
-    astral>=3.2 \
-    pytz>=2024.1 \
-    msgpack>=1.0.0
-
-# Copy source code
-COPY strategy/src ./src
-
-# ============================================================================
-# Stage 4: Final Runtime Image
-# ============================================================================
-FROM python:3.11-slim-bookworm AS runtime
-
-# Install runtime dependencies
+# Install runtime dependencies (minimal - no Python)
 RUN apt-get update && apt-get install -y \
     libssl3 \
     ca-certificates \
@@ -106,19 +76,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy Rust binary (binary name is package name from Cargo.toml)
+# Copy Rust binary (unified: market-data + strategy + API)
 COPY --from=rust-builder /app/market-data/target/release/orp-flow-market-data /app/bin/market-data
 
-# Copy OCaml binary
+# Copy OCaml binary (risk gateway)
 COPY --from=ocaml-builder /home/opam/app/_build/default/bin/risk_gateway.exe /app/bin/risk_gateway
-
-# Copy Python application
-COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY strategy/__init__.py /app/strategy/__init__.py
-COPY strategy/src /app/strategy/src
-
-# Set PYTHONPATH for strategy module imports
-ENV PYTHONPATH=/app
 
 # Copy supervisor configuration
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -127,13 +89,15 @@ COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY deploy/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create data directory
+# Create data directory for SQLite
 RUN mkdir -p /data
 
-# Expose ports
+# Expose ports:
+# 8000 - Main API (health, status, trades, positions)
+# 9090 - Metrics/Health checks
 EXPOSE 8000 9090
 
-# Health check
+# Health check - single Rust binary serves everything
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 

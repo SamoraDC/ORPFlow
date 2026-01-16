@@ -1,0 +1,78 @@
+# Paper Trading Configuration
+# ===========================
+# Simulation settings for strategy validation
+
+# Account settings
+account:
+  initial_capital: 10000.0
+  leverage: 1.0
+
+# Transaction costs
+costs:
+  commission_pct: 0.001   # 0.1% per trade (Binance taker fee)
+  slippage_pct: 0.0005    # 0.05% slippage estimate
+
+# Risk management
+risk:
+  max_position_size: 0.1      # 10% of capital per position
+  max_total_exposure: 0.5     # 50% total exposure
+  stop_loss_pct: 0.02         # 2% stop loss
+  take_profit_pct: 0.04       # 4% take profit
+  enable_stop_loss: true
+  enable_take_profit: true
+
+# Trading settings
+trading:
+  symbol: "BTCUSDT"
+  min_order_size: 0.001       # Minimum BTC order
+  price_decimals: 2           # Price precision
+  quantity_decimals: 8        # Quantity precision
+
+# Data source
+data:
+  data_source: "historical"   # historical, live, simulation
+  historical_data_path: "data/raw/klines_90d.parquet"
+
+# Model integration
+models:
+  # Primary model for signal generation
+  primary_model: "trained/xgboost_model.json"
+
+  # Optional ensemble models
+  ensemble:
+    enabled: false
+    models:
+      - path: "trained/lightgbm_model.txt"
+        weight: 0.3
+      - path: "trained/onnx/lstm_model.onnx"
+        weight: 0.4
+      - path: "trained/onnx/cnn_model.onnx"
+        weight: 0.3
+
+    # Ensemble method: mean, weighted, voting
+    method: "weighted"
+
+# Signal generation
+signals:
+  # Signal threshold (absolute value below this is considered neutral)
+  neutral_threshold: 0.1
+
+  # Signal scaling
+  scale_by_confidence: true
+  max_signal_strength: 1.0
+
+# Output settings
+output:
+  output_dir: "paper_trading_results"
+  log_trades: true
+  save_interval: 100          # Save state every N trades
+
+  # Reports
+  generate_report: true
+  report_format: "html"       # html, pdf, json
+
+# Logging
+logging:
+  level: "INFO"
+  log_to_file: true
+  log_file: "logs/paper_trading.log"

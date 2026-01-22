@@ -1,16 +1,30 @@
 # ORPflow HFT Paper Trading - Multi-stage Dockerfile
 # OCaml + Rust (Jane Street Style - No Python in Hot Path)
 # Single unified Rust binary handles market data + strategy + API
+# WITH ONNX Runtime for ML inference in hot path
 
 # ============================================================================
-# Stage 1: Rust Builder
+# Stage 1: Rust Builder with ONNX Runtime
 # ============================================================================
 FROM rust:1.83-slim-bookworm AS rust-builder
 
+# Install build dependencies + ONNX Runtime
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install ONNX Runtime for building
+ENV ORT_VERSION=1.19.2
+RUN curl -L https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz \
+    -o /tmp/onnxruntime.tgz \
+    && tar -xzf /tmp/onnxruntime.tgz -C /opt \
+    && rm /tmp/onnxruntime.tgz
+
+ENV ORT_LIB_LOCATION=/opt/onnxruntime-linux-x64-${ORT_VERSION}
+ENV LD_LIBRARY_PATH=/opt/onnxruntime-linux-x64-${ORT_VERSION}/lib:$LD_LIBRARY_PATH
 
 WORKDIR /app/market-data
 
@@ -23,8 +37,11 @@ COPY market-data/src ./src
 # Copy benchmarks (required by Cargo.toml)
 COPY market-data/benches ./benches
 
-# Build release binary (generates Cargo.lock automatically)
-RUN cargo build --release
+# Copy tests for ONNX parity
+COPY market-data/tests ./tests
+
+# Build release binary WITH ML feature (ONNX support)
+RUN cargo build --release --features ml
 
 # ============================================================================
 # Stage 2: OCaml Builder
@@ -74,6 +91,10 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy ONNX Runtime libraries for inference
+COPY --from=rust-builder /opt/onnxruntime-linux-x64-1.19.2/lib /opt/onnxruntime/lib
+ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib:$LD_LIBRARY_PATH
+
 WORKDIR /app
 
 # Copy Rust binary (unified: market-data + strategy + API)
@@ -81,6 +102,9 @@ COPY --from=rust-builder /app/market-data/target/release/orp-flow-market-data /a
 
 # Copy OCaml binary (risk gateway)
 COPY --from=ocaml-builder /home/opam/app/_build/default/bin/risk_gateway.exe /app/bin/risk_gateway
+
+# Copy ONNX models for ML inference
+COPY trained/onnx /app/models/onnx
 
 # Copy supervisor configuration
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -91,6 +115,9 @@ RUN chmod +x /app/entrypoint.sh
 
 # Create data directory for SQLite
 RUN mkdir -p /data
+
+# Set ONNX model path environment variable
+ENV ONNX_MODEL_DIR=/app/models/onnx
 
 # Expose ports:
 # 8000 - Main API (health, status, trades, positions)

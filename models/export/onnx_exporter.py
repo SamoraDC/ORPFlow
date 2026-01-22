@@ -33,8 +33,17 @@ class ONNXExporter:
         model_name: str = "lightgbm_model",
     ) -> str:
         """Export LightGBM model to ONNX"""
+        import lightgbm as lgb
 
         output_path = self.output_dir / f"{model_name}.onnx"
+
+        # Handle both wrapped model (has .model) and direct Booster
+        if hasattr(model, 'model'):
+            booster = model.model
+        elif isinstance(model, lgb.Booster):
+            booster = model
+        else:
+            raise ValueError(f"Unknown model type: {type(model)}")
 
         try:
             from onnxmltools import convert_lightgbm
@@ -42,9 +51,9 @@ class ONNXExporter:
 
             initial_types = [("input", FloatTensorType([None, len(feature_names)]))]
             onnx_model = convert_lightgbm(
-                model.model,
+                booster,
                 initial_types=initial_types,
-                target_opset=17,
+                target_opset=15,
             )
 
             onnx.save_model(onnx_model, str(output_path))
@@ -58,7 +67,7 @@ class ONNXExporter:
         except ImportError:
             logger.warning("onnxmltools not installed, saving native format")
             native_path = self.output_dir / f"{model_name}.lgb"
-            model.model.save_model(str(native_path))
+            booster.save_model(str(native_path))
             return str(native_path)
 
     def export_xgboost(
@@ -68,8 +77,17 @@ class ONNXExporter:
         model_name: str = "xgboost_model",
     ) -> str:
         """Export XGBoost model to ONNX"""
+        import xgboost as xgb
 
         output_path = self.output_dir / f"{model_name}.onnx"
+
+        # Handle both wrapped model (has .model) and direct Booster
+        if hasattr(model, 'model'):
+            booster = model.model
+        elif isinstance(model, xgb.Booster):
+            booster = model
+        else:
+            raise ValueError(f"Unknown model type: {type(model)}")
 
         try:
             from onnxmltools import convert_xgboost
@@ -77,9 +95,9 @@ class ONNXExporter:
 
             initial_types = [("input", FloatTensorType([None, len(feature_names)]))]
             onnx_model = convert_xgboost(
-                model.model,
+                booster,
                 initial_types=initial_types,
-                target_opset=17,
+                target_opset=15,
             )
 
             onnx.save_model(onnx_model, str(output_path))
@@ -93,7 +111,7 @@ class ONNXExporter:
         except ImportError:
             logger.warning("onnxmltools not installed, saving native format")
             native_path = self.output_dir / f"{model_name}.xgb"
-            model.model.save_model(str(native_path))
+            booster.save_model(str(native_path))
             return str(native_path)
 
     def export_pytorch(
@@ -123,7 +141,7 @@ class ONNXExporter:
             dummy_input,
             str(output_path),
             export_params=True,
-            opset_version=17,
+            opset_version=15,
             do_constant_folding=True,
             input_names=input_names,
             output_names=output_names,
@@ -195,7 +213,7 @@ class ONNXExporter:
             dummy_input,
             str(output_path),
             export_params=True,
-            opset_version=17,
+            opset_version=15,
             do_constant_folding=True,
             input_names=["state"],
             output_names=["action"],
@@ -256,7 +274,7 @@ class ONNXExporter:
                 (dummy_state, dummy_messages),
                 str(output_path),
                 export_params=True,
-                opset_version=17,
+                opset_version=15,
                 do_constant_folding=True,
                 input_names=["state", "messages"],
                 output_names=["action"],

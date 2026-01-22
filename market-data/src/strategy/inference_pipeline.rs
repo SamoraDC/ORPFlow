@@ -11,6 +11,9 @@
 //! - Thread-safe for async runtime integration
 //! - Profile-friendly (array-based lookups, not HashMap)
 
+// Allow dead_code - module is compiled with ml feature but not all functions are used yet
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -596,16 +599,16 @@ impl InferencePipeline {
         self.cached_weights[1] = weights.get(&ModelType::XGBoost)
             .map(|w| w * (base_factor * 0.9 + 0.1))
             .unwrap_or(0.0);
-        self.cached_weights[2] = weights.get(&ModelType::LSTM)
+        self.cached_weights[2] = weights.get(&ModelType::Lstm)
             .map(|w| w * base_factor)
             .unwrap_or(0.0);
-        self.cached_weights[3] = weights.get(&ModelType::CNN)
+        self.cached_weights[3] = weights.get(&ModelType::Cnn)
             .map(|w| w * base_factor)
             .unwrap_or(0.0);
-        self.cached_weights[4] = weights.get(&ModelType::D4PG)
+        self.cached_weights[4] = weights.get(&ModelType::D4pg)
             .map(|w| w * (base_factor * 0.8 + 0.2 * regime_weight))
             .unwrap_or(0.0);
-        self.cached_weights[5] = weights.get(&ModelType::MARL)
+        self.cached_weights[5] = weights.get(&ModelType::Marl)
             .map(|w| w * (base_factor * 0.8 + 0.2 * regime_weight))
             .unwrap_or(0.0);
 

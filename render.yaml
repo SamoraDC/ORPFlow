@@ -1,5 +1,5 @@
 # Render Blueprint - ORPflow HFT Paper Trading
-# OCaml + Rust + Python Flow
+# Rust + OCaml with ONNX ML Inference (Jane Street Style)
 # https://render.com/docs/blueprint-spec
 
 services:
@@ -29,6 +29,11 @@ services:
       - key: RISK_MAX_DRAWDOWN
         value: "0.05"
       - key: PAPER_TRADING
+        value: "true"
+      # ONNX ML Inference Configuration
+      - key: ONNX_MODEL_DIR
+        value: /app/models/onnx
+      - key: ML_ENABLED
         value: "true"
       # Telegram notifications (optional - set in dashboard)
       - key: TELEGRAM_BOT_TOKEN

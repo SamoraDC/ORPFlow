@@ -30,16 +30,20 @@ pub use broker::PaperBroker;
 pub use config::StrategyConfig;
 pub use features::MicrostructureFeatures;
 pub use models::{Account, Position, Trade};
+// NSMI exports - used by ml_inference when ml feature is enabled
+#[allow(unused_imports)]
 pub use nsmi::{NSMIConfig, NSMIFeatures, NSMIResult, NSMIState};
 pub use signals::ImbalanceStrategy;
 pub use storage::TradeStorage;
 
 #[cfg(feature = "ml")]
+#[allow(unused_imports)]
 pub use ml_inference::{
     FeatureBuffer, ModelEnsemble, ModelType, NSMIAdjustedWeights, NSMIAugmentBuffer, OnnxModel,
 };
 
 #[cfg(feature = "ml")]
+#[allow(unused_imports)]
 pub use inference_pipeline::{InferenceConfig, InferencePipeline, InferenceResult, TradingSignal};
 
 use std::sync::Arc;

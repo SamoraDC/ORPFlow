@@ -60,7 +60,8 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1.7", features = ["v4"] }
 
 # ONNX Runtime for ML models (optional)
-ort = { version = "2.0.0-rc.10", optional = true }
+# Pinned to exact version - rc.11 requires Rust 1.88+ edition 2024
+ort = { version = "=2.0.0-rc.10", optional = true }
 ndarray = { version = "0.15", optional = true }
 parking_lot = { version = "0.12", optional = true }
 
@@ -69,8 +70,8 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tokio-test = "0.4"
 mockall = "0.12"
 tempfile = "3.9"
-# ONNX parity testing
-ort = "2.0.0-rc.10"
+# ONNX parity testing - pinned to exact version
+ort = "=2.0.0-rc.10"
 
 [[test]]
 name = "onnx_parity_test"

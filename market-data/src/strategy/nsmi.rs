@@ -14,6 +14,9 @@
 //! - Zero allocations in hot path (pre-allocated buffers)
 //! - Thread-safe for async runtimes
 
+// Allow dead_code when compiled without ml feature (NSMI is used by ml_inference)
+#![allow(dead_code)]
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Configuration for NSMI state tracking
@@ -52,7 +55,7 @@ impl NSMIConfig {
         Self {
             dimension,
             half_life,
-            tracked_eigenvalues: (dimension / 3).max(2).min(5),
+            tracked_eigenvalues: (dimension / 3).clamp(2, 5),
             ..Default::default()
         }
     }
@@ -280,13 +283,13 @@ impl NSMIState {
         }
 
         // Update running mean: mean = (1-alpha) * mean + alpha * x
-        for i in 0..dim {
-            self.mean[i] = (1.0 - alpha) * self.mean[i] + alpha * observation[i];
+        for (mean_i, &obs_i) in self.mean.iter_mut().zip(observation.iter()) {
+            *mean_i = (1.0 - alpha) * *mean_i + alpha * obs_i;
         }
 
         // Compute centered observation: x_centered = x - mean
-        for i in 0..dim {
-            self.buffers.centered[i] = observation[i] - self.mean[i];
+        for ((centered_i, &obs_i), &mean_i) in self.buffers.centered.iter_mut().zip(observation.iter()).zip(self.mean.iter()) {
+            *centered_i = obs_i - mean_i;
         }
 
         // Update covariance matrix using rank-1 update:

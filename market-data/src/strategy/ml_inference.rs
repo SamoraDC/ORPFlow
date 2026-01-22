@@ -8,6 +8,9 @@
 //! - Feature augmentation with NSMI-derived features
 //! - Zero-allocation hot path via pre-allocated buffers
 
+// Allow dead_code - module has comprehensive API, not all functions used yet
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -21,13 +24,14 @@ use super::nsmi::{NSMIConfig, NSMIFeatures, NSMIResult, NSMIState};
 
 /// Model type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ModelType {
     LightGBM,
     XGBoost,
-    LSTM,
-    CNN,
-    D4PG,
-    MARL,
+    Lstm,
+    Cnn,
+    D4pg,
+    Marl,
 }
 
 impl std::fmt::Display for ModelType {
@@ -35,10 +39,10 @@ impl std::fmt::Display for ModelType {
         match self {
             ModelType::LightGBM => write!(f, "lightgbm"),
             ModelType::XGBoost => write!(f, "xgboost"),
-            ModelType::LSTM => write!(f, "lstm"),
-            ModelType::CNN => write!(f, "cnn"),
-            ModelType::D4PG => write!(f, "d4pg"),
-            ModelType::MARL => write!(f, "marl"),
+            ModelType::Lstm => write!(f, "lstm"),
+            ModelType::Cnn => write!(f, "cnn"),
+            ModelType::D4pg => write!(f, "d4pg"),
+            ModelType::Marl => write!(f, "marl"),
         }
     }
 }
@@ -250,10 +254,10 @@ impl ModelEnsemble {
                         let model_type = match name_str {
                             "lightgbm" | "lightgbm_model" => Some(ModelType::LightGBM),
                             "xgboost" | "xgboost_model" => Some(ModelType::XGBoost),
-                            "lstm" | "lstm_model" => Some(ModelType::LSTM),
-                            "cnn" | "cnn_model" => Some(ModelType::CNN),
-                            "d4pg" | "d4pg_actor" => Some(ModelType::D4PG),
-                            n if n.starts_with("marl") => Some(ModelType::MARL),
+                            "lstm" | "lstm_model" => Some(ModelType::Lstm),
+                            "cnn" | "cnn_model" => Some(ModelType::Cnn),
+                            "d4pg" | "d4pg_actor" => Some(ModelType::D4pg),
+                            n if n.starts_with("marl") => Some(ModelType::Marl),
                             _ => None,
                         };
 
@@ -391,11 +395,11 @@ impl ModelEnsemble {
                         base_weight * (base_factor * 0.9 + 0.1)
                     }
                     // DL models may overfit to recent regime
-                    ModelType::LSTM | ModelType::CNN => {
+                    ModelType::Lstm | ModelType::Cnn => {
                         base_weight * base_factor
                     }
                     // RL models need stable regimes
-                    ModelType::D4PG | ModelType::MARL => {
+                    ModelType::D4pg | ModelType::Marl => {
                         base_weight * (base_factor * 0.8 + 0.2 * regime_factor)
                     }
                 };
@@ -456,7 +460,7 @@ impl ModelEnsemble {
         let mut weighted_sum = 0.0f32;
         let mut total_weight = 0.0f32;
 
-        for model_type in [ModelType::LSTM, ModelType::CNN] {
+        for model_type in [ModelType::Lstm, ModelType::Cnn] {
             if let Some(&weight) = weights.get(&model_type) {
                 if let Some(model) = models.get_mut(&model_type) {
                     match model.predict_sequence(sequence) {
@@ -484,7 +488,7 @@ impl ModelEnsemble {
     pub fn get_rl_action(&self, state: &[f32]) -> Result<Vec<f32>> {
         let mut models = self.models.write();
 
-        if let Some(model) = models.get_mut(&ModelType::D4PG) {
+        if let Some(model) = models.get_mut(&ModelType::D4pg) {
             model.predict_action(state)
         } else {
             Err(anyhow::anyhow!("D4PG model not available"))
@@ -569,7 +573,7 @@ impl ModelEnsemble {
         let mut weighted_sum = 0.0f32;
         let mut total_weight = 0.0f32;
 
-        for model_type in [ModelType::LSTM, ModelType::CNN] {
+        for model_type in [ModelType::Lstm, ModelType::Cnn] {
             if let Some(&weight) = adjusted.adjusted_weights.get(&model_type) {
                 if let Some(model) = models.get_mut(&model_type) {
                     match model.predict_sequence(&effective_sequence) {
@@ -751,7 +755,7 @@ mod tests {
     #[test]
     fn test_model_type_display() {
         assert_eq!(ModelType::LightGBM.to_string(), "lightgbm");
-        assert_eq!(ModelType::D4PG.to_string(), "d4pg");
+        assert_eq!(ModelType::D4pg.to_string(), "d4pg");
     }
 
     #[test]

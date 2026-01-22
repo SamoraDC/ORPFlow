@@ -1,11 +1,12 @@
 #!/bin/bash
 set -e
 
-# QuantumFlow HFT Paper Trading - Entrypoint Script
+# ORPFlow HFT Paper Trading - Entrypoint Script
 # Initializes the environment and starts all services
+# Note: No Python in runtime - Rust binary handles everything
 
 echo "========================================"
-echo "QuantumFlow HFT Paper Trading System"
+echo "ORPFlow HFT Paper Trading System"
 echo "========================================"
 echo ""
 
@@ -13,22 +14,15 @@ echo ""
 mkdir -p /var/log/supervisor
 mkdir -p /data
 
-# Initialize database if it doesn't exist
-if [ ! -f /data/trades.db ]; then
-    echo "Initializing SQLite database..."
-    python -c "
-from strategy.src.storage.database import init_database
-init_database('/data/trades.db')
-print('Database initialized successfully')
-"
-fi
-
 # Display configuration
 echo "Configuration:"
 echo "  Symbols: ${SYMBOLS:-BTCUSDT,ETHUSDT}"
 echo "  Timezone: ${TIMEZONE:-America/Sao_Paulo}"
 echo "  Max Position: ${RISK_MAX_POSITION:-1.0}"
 echo "  Max Drawdown: ${RISK_MAX_DRAWDOWN:-0.05}"
+echo "  Initial Balance: ${INITIAL_BALANCE:-10000}"
+echo "  ML Enabled: ${ML_ENABLED:-true}"
+echo "  ONNX Model Dir: ${ONNX_MODEL_DIR:-/app/models/onnx}"
 echo ""
 
 # Check Binance connectivity
@@ -37,6 +31,16 @@ if curl -s --connect-timeout 5 https://api.binance.com/api/v3/ping > /dev/null; 
     echo "  Binance API: OK"
 else
     echo "  Binance API: WARNING - Unable to connect"
+fi
+echo ""
+
+# Verify ONNX models exist
+echo "Checking ONNX models..."
+if [ -d "${ONNX_MODEL_DIR:-/app/models/onnx}" ]; then
+    MODEL_COUNT=$(find "${ONNX_MODEL_DIR:-/app/models/onnx}" -name "*.onnx" 2>/dev/null | wc -l)
+    echo "  ONNX models found: $MODEL_COUNT"
+else
+    echo "  ONNX models: WARNING - Directory not found"
 fi
 echo ""
 

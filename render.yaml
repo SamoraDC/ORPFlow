@@ -14,27 +14,50 @@ services:
 
     # Environment Variables
     envVars:
+      # Logging
       - key: RUST_LOG
         value: info
+
+      # Trading Configuration
       - key: SYMBOLS
         value: BTCUSDT,ETHUSDT
+      - key: INITIAL_BALANCE
+        value: "10000"
+      - key: IMBALANCE_THRESHOLD
+        value: "0.3"
+      - key: MIN_CONFIDENCE
+        value: "0.6"
+      - key: POSITION_SIZE_PCT
+        value: "0.1"
+
+      # Database
       - key: DATABASE_URL
         value: sqlite:///data/trades.db
-      - key: TIMEZONE
-        value: America/Sao_Paulo
+
+      # IPC
       - key: IPC_SOCKET_PATH
         value: /tmp/orp-flow.sock
+
+      # Risk Management
       - key: RISK_MAX_POSITION
         value: "1.0"
       - key: RISK_MAX_DRAWDOWN
         value: "0.05"
+      - key: MAX_DAILY_TRADES
+        value: "50"
+
+      # General
+      - key: TIMEZONE
+        value: America/Sao_Paulo
       - key: PAPER_TRADING
         value: "true"
+
       # ONNX ML Inference Configuration
       - key: ONNX_MODEL_DIR
         value: /app/models/onnx
       - key: ML_ENABLED
         value: "true"
+
       # Telegram notifications (optional - set in dashboard)
       - key: TELEGRAM_BOT_TOKEN
         sync: false  # Must be set manually in dashboard
@@ -46,23 +69,6 @@ services:
       name: orp-flow-data
       mountPath: /data
       sizeGB: 1
-
-  # Web Dashboard & API (optional - can use free tier)
-  - type: web
-    name: orp-flow-dashboard
-    runtime: docker
-    dockerfilePath: ./strategy/Dockerfile.api
-    dockerContext: ./strategy
-    region: oregon
-    plan: free  # Will spin down after 15min inactivity (OK for dashboard)
-
-    envVars:
-      - key: DATABASE_URL
-        value: sqlite:///data/trades.db
-      - key: PORT
-        value: "8000"
-
-    healthCheckPath: /health
 
     # Auto-deploy on push to main
     autoDeploy: true

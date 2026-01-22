@@ -28,8 +28,9 @@ ENV LD_LIBRARY_PATH=/opt/onnxruntime-linux-x64-${ORT_VERSION}/lib:$LD_LIBRARY_PA
 
 WORKDIR /app/market-data
 
-# Copy Cargo.toml only (Cargo.lock generated during build)
+# Copy Cargo manifests to lock dependency versions in CI builds
 COPY market-data/Cargo.toml ./
+COPY market-data/Cargo.lock ./
 
 # Copy actual source code
 COPY market-data/src ./src
@@ -41,7 +42,7 @@ COPY market-data/benches ./benches
 COPY market-data/tests ./tests
 
 # Build release binary WITH ML feature (ONNX support)
-RUN cargo build --release --features ml
+RUN cargo build --release --features ml --locked
 
 # ============================================================================
 # Stage 2: OCaml Builder

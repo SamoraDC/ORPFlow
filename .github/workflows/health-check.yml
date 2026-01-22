@@ -14,40 +14,58 @@ jobs:
     steps:
       - name: Check API Health
         id: health
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
-          response=$(curl -s -o response.json -w "%{http_code}" https://quantumflow-hft.fly.dev/health || echo "000")
+          # Use secret URL or fallback to default service name
+          SERVICE_URL="${RENDER_SERVICE_URL:-https://orp-flow-trading.onrender.com}"
+
+          echo "Checking health at: $SERVICE_URL/health"
+          response=$(curl -s -o response.json -w "%{http_code}" "$SERVICE_URL/health" --connect-timeout 30 --max-time 60 || echo "000")
 
           if [ "$response" = "200" ]; then
             echo "status=healthy" >> $GITHUB_OUTPUT
-            echo "API is healthy"
-            cat response.json
+            echo "✅ API is healthy"
+            cat response.json | jq . 2>/dev/null || cat response.json
           else
             echo "status=unhealthy" >> $GITHUB_OUTPUT
-            echo "API returned status: $response"
+            echo "❌ API returned status: $response"
+            cat response.json 2>/dev/null || echo "No response body"
           fi
 
       - name: Check if Shabbat pause
         id: shabbat
         if: steps.health.outputs.status == 'healthy'
         run: |
-          status=$(cat response.json | jq -r '.details.shabbat_pause // false')
+          status=$(cat response.json | jq -r '.details.shabbat_pause // false' 2>/dev/null || echo "false")
           echo "shabbat_pause=$status" >> $GITHUB_OUTPUT
-          echo "Shabbat pause: $status"
+          echo "🕯️ Shabbat pause: $status"
+
+      - name: Get system metrics
+        if: steps.health.outputs.status == 'healthy'
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+        run: |
+          SERVICE_URL="${RENDER_SERVICE_URL:-https://orp-flow-trading.onrender.com}"
+
+          echo "📊 Fetching metrics..."
+          curl -s "$SERVICE_URL/metrics" --connect-timeout 10 | jq . 2>/dev/null || echo "Metrics not available"
 
       - name: Restart if unhealthy
         if: steps.health.outputs.status == 'unhealthy'
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          echo "System unhealthy, attempting restart..."
+          echo "⚠️ System unhealthy, attempting restart..."
 
-          # Install flyctl
-          curl -L https://fly.io/install.sh | sh
-          export FLYCTL_INSTALL="/home/runner/.fly"
-          export PATH="$FLYCTL_INSTALL/bin:$PATH"
-
-          # Restart the app
-          flyctl apps restart quantumflow-hft
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            # Trigger redeploy via Render deploy hook
+            curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+            echo "🔄 Redeploy triggered via Render deploy hook"
+          else
+            echo "⚠️ RENDER_DEPLOY_HOOK_URL not configured. Cannot trigger restart."
+            echo "Set up a deploy hook in Render Dashboard → Settings → Deploy Hook"
+          fi
 
       - name: Send alert on failure
         if: failure()
@@ -56,7 +74,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-            MESSAGE="⚠️ QuantumFlow Health Check Failed\n\nThe system may be down. Automatic restart attempted."
+            MESSAGE="⚠️ ORPFlow Health Check Failed
+
+The system may be down. Automatic restart attempted.
+
+Check: https://dashboard.render.com"
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" \
               -d "text=${MESSAGE}" \

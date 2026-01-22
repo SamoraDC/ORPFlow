@@ -1,7 +1,8 @@
 # Rust
 market-data/target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock is versioned for binary projects to ensure reproducible builds
+!market-data/Cargo.lock
 
 # OCaml
 core/_build/

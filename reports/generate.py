@@ -1,32 +1,38 @@
 #!/usr/bin/env python3
-"""Report generator for QuantumFlow HFT Paper Trading.
+"""Report generator for ORPFlow HFT Paper Trading.
 
 Generates performance charts and updates the README with latest metrics.
 Designed to run daily via GitHub Actions.
+
+Supports two data sources:
+1. SQLite database (local development)
+2. API JSON files (production - fetched from Render API)
 """
 
+import json
 import os
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
-from jinja2 import Environment, FileSystemLoader
 
 
 # Configuration
 DB_PATH = os.environ.get("DATABASE_URL", "sqlite:///data/trades.db").replace("sqlite:///", "")
+DATA_SOURCE = os.environ.get("DATA_SOURCE", "auto")  # "auto", "api", or "sqlite"
+DATA_DIR = Path(__file__).parent.parent / "data"
 OUTPUT_DIR = Path(__file__).parent / "assets"
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 README_PATH = Path(__file__).parent.parent / "README.md"
 
 
-def load_trades(db_path: str) -> pd.DataFrame:
+def load_trades_from_sqlite(db_path: str) -> pd.DataFrame:
     """Load trades from SQLite database."""
     if not Path(db_path).exists():
         print(f"Database not found: {db_path}")
@@ -40,7 +46,11 @@ def load_trades(db_path: str) -> pd.DataFrame:
         FROM trades
         ORDER BY timestamp ASC
     """
-    df = pd.read_sql_query(query, conn)
+    try:
+        df = pd.read_sql_query(query, conn)
+    except Exception as e:
+        print(f"Error reading from SQLite: {e}")
+        df = pd.DataFrame()
     conn.close()
 
     if not df.empty:
@@ -51,6 +61,113 @@ def load_trades(db_path: str) -> pd.DataFrame:
         df["pnl"] = pd.to_numeric(df["pnl"].fillna(0))
 
     return df
+
+
+def load_trades_from_api_json(data_dir: Path) -> pd.DataFrame:
+    """Load trades from API JSON files (fetched by GitHub Actions)."""
+    trades_file = data_dir / "trades.json"
+
+    if not trades_file.exists():
+        print(f"Trades JSON not found: {trades_file}")
+        return pd.DataFrame()
+
+    try:
+        with open(trades_file) as f:
+            trades_data = json.load(f)
+
+        if not trades_data:
+            print("No trades in JSON file")
+            return pd.DataFrame()
+
+        # Handle both array and object with trades key
+        if isinstance(trades_data, dict):
+            trades_data = trades_data.get("trades", [])
+
+        df = pd.DataFrame(trades_data)
+
+        if df.empty:
+            return df
+
+        # Normalize column names (API might use camelCase)
+        column_mapping = {
+            "orderId": "order_id",
+            "orderid": "order_id",
+            "timestamp": "timestamp",
+            "created_at": "timestamp",
+            "createdAt": "timestamp",
+        }
+        df = df.rename(columns=column_mapping)
+
+        # Ensure required columns exist
+        for col in ["symbol", "side", "price", "quantity", "fee", "pnl", "timestamp"]:
+            if col not in df.columns:
+                if col == "fee":
+                    df[col] = 0.0
+                elif col == "pnl":
+                    df[col] = 0.0
+                else:
+                    df[col] = None
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0)
+        df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0)
+        df["fee"] = pd.to_numeric(df["fee"], errors="coerce").fillna(0)
+        df["pnl"] = pd.to_numeric(df["pnl"], errors="coerce").fillna(0)
+
+        return df.sort_values("timestamp").reset_index(drop=True)
+
+    except json.JSONDecodeError as e:
+        print(f"Error parsing trades JSON: {e}")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading trades from JSON: {e}")
+        return pd.DataFrame()
+
+
+def load_metrics_from_api_json(data_dir: Path) -> dict[str, Any] | None:
+    """Load pre-calculated metrics from API JSON (if available)."""
+    metrics_file = data_dir / "metrics.json"
+
+    if not metrics_file.exists():
+        return None
+
+    try:
+        with open(metrics_file) as f:
+            metrics = json.load(f)
+
+        # Return None if empty or error response
+        if not metrics or "error" in metrics:
+            return None
+
+        return metrics
+
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"Error loading metrics JSON: {e}")
+        return None
+
+
+def load_trades() -> pd.DataFrame:
+    """Load trades from the best available source."""
+    source = DATA_SOURCE.lower()
+
+    if source == "api":
+        print("Loading trades from API JSON...")
+        return load_trades_from_api_json(DATA_DIR)
+
+    elif source == "sqlite":
+        print(f"Loading trades from SQLite: {DB_PATH}")
+        return load_trades_from_sqlite(DB_PATH)
+
+    else:  # auto
+        # Try API JSON first (from GitHub Actions), then SQLite
+        if (DATA_DIR / "trades.json").exists():
+            print("Auto-detected: Loading trades from API JSON...")
+            df = load_trades_from_api_json(DATA_DIR)
+            if not df.empty:
+                return df
+
+        print(f"Auto-detected: Loading trades from SQLite: {DB_PATH}")
+        return load_trades_from_sqlite(DB_PATH)
 
 
 def calculate_metrics(trades: pd.DataFrame, initial_balance: float = 10000.0) -> dict[str, Any]:
@@ -87,6 +204,7 @@ def calculate_metrics(trades: pd.DataFrame, initial_balance: float = 10000.0) ->
     total_fees = trades["fee"].sum()
 
     # Equity curve
+    trades = trades.copy()
     trades["cumulative_pnl"] = trades["pnl"].cumsum()
     trades["equity"] = initial_balance + trades["cumulative_pnl"]
 
@@ -142,6 +260,7 @@ def generate_equity_curve(trades: pd.DataFrame, output_path: Path, initial_balan
     if trades.empty:
         return
 
+    trades = trades.copy()
     trades["cumulative_pnl"] = trades["pnl"].cumsum()
     trades["equity"] = initial_balance + trades["cumulative_pnl"]
 
@@ -190,6 +309,7 @@ def generate_drawdown_chart(trades: pd.DataFrame, output_path: Path, initial_bal
     if trades.empty:
         return
 
+    trades = trades.copy()
     trades["cumulative_pnl"] = trades["pnl"].cumsum()
     trades["equity"] = initial_balance + trades["cumulative_pnl"]
     trades["peak"] = trades["equity"].cummax()
@@ -260,6 +380,7 @@ def generate_hourly_heatmap(trades: pd.DataFrame, output_path: Path) -> None:
     if trades.empty:
         return
 
+    trades = trades.copy()
     trades["hour"] = trades["timestamp"].dt.hour
     trades["dayofweek"] = trades["timestamp"].dt.dayofweek
 
@@ -300,34 +421,32 @@ def generate_hourly_heatmap(trades: pd.DataFrame, output_path: Path) -> None:
     print(f"Generated: {output_path}")
 
 
-def update_readme(metrics: dict[str, Any], readme_path: Path) -> None:
+def update_readme(metrics: dict[str, Any], readme_path: Path, has_charts: bool = False) -> None:
     """Update README with latest metrics."""
-    # Load template
-    env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)))
+    updated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    try:
-        template = env.get_template("metrics_section.md.j2")
-        metrics_section = template.render(
-            metrics=metrics,
-            updated_at=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        )
-    except Exception as e:
-        print(f"Template error: {e}")
-        # Fallback to simple format
-        metrics_section = f"""
-## Live Performance
+    # Generate metrics section
+    if metrics["total_trades"] == 0:
+        metrics_section = f"""## Live Performance
 
-*Last updated: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}*
+*Last updated: {updated_at}*
+
+*System starting - metrics will appear after first trades*
 
 | Metric | Value |
 |--------|-------|
-| Total Trades | {metrics['total_trades']} |
-| Win Rate | {metrics['win_rate']:.1f}% |
-| Total P&L | ${metrics['total_pnl']:.2f} ({metrics['total_pnl_pct']:.2f}%) |
-| Sharpe Ratio | {metrics['sharpe_ratio']:.2f} |
-| Max Drawdown | {metrics['max_drawdown_pct']:.2f}% |
-| Profit Factor | {metrics['profit_factor']:.2f} |
+| Total Trades | 0 |
+| Win Rate | 0% |
+| Total P&L | $0.00 |
+| Sharpe Ratio | - |
+| Max Drawdown | 0% |
 
+*Charts will be generated daily by GitHub Actions*
+"""
+    else:
+        charts_section = ""
+        if has_charts:
+            charts_section = """
 ### Equity Curve
 ![Equity Curve](reports/assets/equity_curve.png)
 
@@ -340,6 +459,31 @@ def update_readme(metrics: dict[str, Any], readme_path: Path) -> None:
 ### P&L Heatmap
 ![Hourly Heatmap](reports/assets/hourly_heatmap.png)
 """
+
+        metrics_section = f"""## Live Performance
+
+*Last updated: {updated_at}*
+
+| Metric | Value |
+|--------|-------|
+| Total Trades | {metrics['total_trades']} |
+| Win Rate | {metrics['win_rate']:.1f}% |
+| Total P&L | ${metrics['total_pnl']:.2f} ({metrics['total_pnl_pct']:+.2f}%) |
+| Sharpe Ratio | {metrics['sharpe_ratio']:.2f} |
+| Max Drawdown | {metrics['max_drawdown_pct']:.2f}% |
+| Profit Factor | {metrics['profit_factor']:.2f} |
+| Trading Days | {metrics['trading_days']} |
+| Trades/Day | {metrics['trades_per_day']:.1f} |
+
+| Win/Loss Stats | Value |
+|----------------|-------|
+| Winning Trades | {metrics['winning_trades']} |
+| Losing Trades | {metrics['losing_trades']} |
+| Average Win | ${metrics['avg_win']:.2f} |
+| Average Loss | ${metrics['avg_loss']:.2f} |
+| Largest Win | ${metrics['largest_win']:.2f} |
+| Largest Loss | ${metrics['largest_loss']:.2f} |
+{charts_section}"""
 
     # Read current README
     if readme_path.exists():
@@ -363,33 +507,47 @@ def update_readme(metrics: dict[str, Any], readme_path: Path) -> None:
 
 def main() -> int:
     """Main entry point."""
-    print("QuantumFlow Report Generator")
+    print("ORPFlow Report Generator")
     print("=" * 40)
+    print(f"Data source: {DATA_SOURCE}")
 
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Try to load pre-calculated metrics from API (if available)
+    api_metrics = load_metrics_from_api_json(DATA_DIR)
+
     # Load trades
-    print(f"Loading trades from: {DB_PATH}")
-    trades = load_trades(DB_PATH)
+    trades = load_trades()
 
     if trades.empty:
         print("No trades found. Generating placeholder report.")
 
-    # Calculate metrics
-    metrics = calculate_metrics(trades)
-    print(f"Total trades: {metrics['total_trades']}")
-    print(f"Total P&L: ${metrics['total_pnl']:.2f}")
+    # Calculate metrics (or use API metrics if available)
+    if api_metrics and api_metrics.get("total_trades", 0) > 0:
+        print("Using pre-calculated metrics from API")
+        metrics = api_metrics
+        # Add missing keys for compatibility
+        for key in ["equity_curve", "drawdown_curve"]:
+            if key not in metrics:
+                metrics[key] = []
+    else:
+        metrics = calculate_metrics(trades)
+
+    print(f"Total trades: {metrics.get('total_trades', 0)}")
+    print(f"Total P&L: ${metrics.get('total_pnl', 0):.2f}")
 
     # Generate charts
+    has_charts = False
     if not trades.empty:
         generate_equity_curve(trades, OUTPUT_DIR / "equity_curve.png")
         generate_drawdown_chart(trades, OUTPUT_DIR / "drawdown.png")
         generate_pnl_distribution(trades, OUTPUT_DIR / "pnl_distribution.png")
         generate_hourly_heatmap(trades, OUTPUT_DIR / "hourly_heatmap.png")
+        has_charts = True
 
     # Update README
-    update_readme(metrics, README_PATH)
+    update_readme(metrics, README_PATH, has_charts=has_charts)
 
     print("\nReport generation complete!")
     return 0

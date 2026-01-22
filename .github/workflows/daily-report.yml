@@ -25,20 +25,41 @@ jobs:
         run: |
           pip install -r reports/requirements.txt
 
-      - name: Download database from Fly.io
+      - name: Fetch data from Render API
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
-          # Install flyctl
-          curl -L https://fly.io/install.sh | sh
-          export FLYCTL_INSTALL="/home/runner/.fly"
-          export PATH="$FLYCTL_INSTALL/bin:$PATH"
+          # Use secret URL or fallback to default service name
+          SERVICE_URL="${RENDER_SERVICE_URL:-https://orp-flow-trading.onrender.com}"
 
-          # Download database file
+          echo "📊 Fetching trading data from: $SERVICE_URL"
           mkdir -p data
-          flyctl ssh console -C "cat /data/trades.db" > data/trades.db 2>/dev/null || echo "No database found, using empty"
+
+          # Fetch metrics
+          echo "Fetching /metrics..."
+          curl -s "$SERVICE_URL/metrics" --connect-timeout 30 --max-time 60 > data/metrics.json || echo '{}' > data/metrics.json
+
+          # Fetch trades history
+          echo "Fetching /trades..."
+          curl -s "$SERVICE_URL/trades" --connect-timeout 30 --max-time 60 > data/trades.json || echo '[]' > data/trades.json
+
+          # Fetch account status
+          echo "Fetching /account..."
+          curl -s "$SERVICE_URL/account" --connect-timeout 30 --max-time 60 > data/account.json || echo '{}' > data/account.json
+
+          # Show fetched data summary
+          echo ""
+          echo "📈 Fetched data summary:"
+          echo "Metrics:"
+          cat data/metrics.json | jq . 2>/dev/null || cat data/metrics.json
+          echo ""
+          echo "Trades count: $(cat data/trades.json | jq 'length' 2>/dev/null || echo 'N/A')"
+          echo "Account:"
+          cat data/account.json | jq . 2>/dev/null || cat data/account.json
 
       - name: Generate report
+        env:
+          DATA_SOURCE: api
         run: |
           python reports/generate.py
 
@@ -59,7 +80,19 @@ jobs:
         run: |
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
             # Extract key metrics for notification
-            MESSAGE="📊 QuantumFlow Daily Report Generated\n\nCheck the updated README for performance metrics."
+            TOTAL_TRADES=$(cat data/metrics.json | jq -r '.total_trades // 0' 2>/dev/null || echo "0")
+            WIN_RATE=$(cat data/metrics.json | jq -r '.win_rate // 0' 2>/dev/null || echo "0")
+            TOTAL_PNL=$(cat data/metrics.json | jq -r '.total_pnl // 0' 2>/dev/null || echo "0")
+
+            MESSAGE="📊 ORPFlow Daily Report Generated
+
+📈 Performance Summary:
+• Total Trades: $TOTAL_TRADES
+• Win Rate: ${WIN_RATE}%
+• Total P&L: \$${TOTAL_PNL}
+
+Check the updated README for full metrics and charts."
+
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" \
               -d "text=${MESSAGE}" \

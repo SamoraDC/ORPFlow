@@ -3,14 +3,17 @@
 # https://render.com/docs/blueprint-spec
 
 services:
-  # Main Trading Service (Background Worker - never sleeps)
-  - type: worker
+  # Main Trading Service (Web Service for API access)
+  - type: web
     name: orp-flow-trading
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     region: oregon  # Closest to major exchanges
     plan: starter   # $7/month - always on, no spin-down
+
+    # Health check configuration
+    healthCheckPath: /health
 
     # Environment Variables
     envVars:

@@ -1,18 +1,19 @@
 # ORPflow - HFT Paper Trading
 
-> **O**Caml + **R**ust + **P**ython Flow
+> **O**Caml + **R**ust + **P**erformance Flow
 
 [![CI](https://github.com/SamoraDC/ORPflow/actions/workflows/ci.yml/badge.svg)](https://github.com/SamoraDC/ORPflow/actions/workflows/ci.yml)
+[![Health Check](https://github.com/SamoraDC/ORPFlow/actions/workflows/health-check.yml/badge.svg)](https://github.com/SamoraDC/ORPFlow/actions/workflows/health-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Render](https://img.shields.io/badge/Deploy-Render-46E3B7)](https://render.com)
 
-A high-frequency paper trading system demonstrating multi-language systems engineering with **OCaml**, **Rust**, and **Python**. Designed as a portfolio project showcasing low-latency market data processing, type-safe risk management, and quantitative trading strategies.
+A high-frequency paper trading system demonstrating multi-language systems engineering with **OCaml** and **Rust**. Built following **Jane Street architecture principles**: no interpreted languages in the hot path. Uses ONNX Runtime for ML inference directly in Rust.
 
 ## Features
 
-- **Real-time Market Data** (Rust): WebSocket connection to Binance with order book reconstruction
-- **Type-Safe Risk Engine** (OCaml): Position limits, drawdown circuit breakers, P&L calculation
-- **Trading Strategy** (Python): Order flow imbalance strategy with volatility adjustment
+- **Unified Trading Engine** (Rust): WebSocket market data, order book, strategy, paper broker, REST API - all in one binary
+- **ML Inference in Hot Path** (Rust + ONNX): LightGBM, XGBoost, CNN, LSTM models loaded via ONNX Runtime
+- **Type-Safe Risk Gateway** (OCaml): Position limits, drawdown circuit breakers, P&L validation
 - **Paper Trading**: Realistic execution simulation with slippage, market impact, and fees
 - **Shabbat Pause**: Automatic trading pause from Friday to Saturday sunset
 - **Live Dashboard**: Auto-updating README with performance charts via GitHub Actions
@@ -26,41 +27,47 @@ A high-frequency paper trading system demonstrating multi-language systems engin
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Binance   │────▶│    Rust     │────▶│   OCaml     │
-│  WebSocket  │     │ Market Data │     │ Risk Engine │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │                   │
-                           └───────┬───────────┘
-                                   ▼
-                          ┌─────────────────┐
-                          │     Python      │
-                          │ Strategy Engine │
-                          │   + REST API    │
-                          └────────┬────────┘
-                                   │
-                          ┌────────▼────────┐
-                          │     SQLite      │
-                          │    Database     │
-                          └─────────────────┘
+┌─────────────┐     ┌────────────────────────────────────────┐
+│   Binance   │────▶│              Rust (Unified)            │
+│  WebSocket  │     │  ┌──────────┐  ┌──────────┐  ┌──────┐ │
+└─────────────┘     │  │ WebSocket│  │ Strategy │  │ REST │ │
+                    │  │ + Order  │──▶│ + Paper  │──▶│ API  │ │
+                    │  │  Book    │  │  Broker  │  │:8000 │ │
+                    │  └──────────┘  └──────────┘  └──────┘ │
+                    │       │              │                 │
+                    │       ▼              ▼                 │
+                    │  ┌──────────────────────────────────┐  │
+                    │  │       ONNX Runtime (ML)          │  │
+                    │  │  LightGBM  XGBoost  CNN  LSTM    │  │
+                    │  └──────────────────────────────────┘  │
+                    └──────────────────┬─────────────────────┘
+                                       │ IPC
+                                       ▼
+                              ┌─────────────────┐
+                              │     OCaml       │
+                              │  Risk Gateway   │
+                              │  (Validation)   │
+                              └─────────────────┘
 ```
 
-### Why This Tech Stack?
+### Why This Tech Stack? (Jane Street Style)
 
 | Component | Language | Reason |
 |-----------|----------|--------|
-| Market Data | **Rust** | Zero-cost abstractions, memory safety, excellent async runtime |
-| Risk Engine | **OCaml** | Algebraic data types prevent invalid states, exhaustive pattern matching |
-| Strategy | **Python** | Rapid prototyping, rich data science ecosystem, easy modification |
+| Unified Engine | **Rust** | Zero-cost abstractions, async I/O, ONNX bindings, no GC pauses |
+| ML Inference | **ONNX** | Models trained in Python, deployed in Rust at microsecond latency |
+| Risk Gateway | **OCaml** | Algebraic types prevent invalid states, exhaustive pattern matching |
+
+**No Python in Hot Path**: All ML models are exported to ONNX format during training (offline), then loaded by Rust for real-time inference. This eliminates Python interpreter overhead in the trading loop.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Rust 1.75+
+- Rust 1.85+ (for edition2024 support)
 - OCaml 5.1+ with opam
-- Python 3.11+
-- Docker (optional)
+- ONNX Runtime 1.19+
+- Docker (recommended for deployment)
 
 ### Setup
 
@@ -86,41 +93,42 @@ docker-compose up --build
 
 ```
 ORPflow/
-├── market-data/          # Rust - WebSocket & order book
+├── market-data/          # Rust - Unified trading engine
 │   └── src/
-│       ├── websocket/    # Connection management
-│       ├── parser/       # Message deserialization
-│       ├── orderbook/    # Order book data structure
-│       └── publisher/    # IPC to other components
+│       ├── main.rs       # Entry point + REST API (port 8000)
+│       ├── websocket/    # Binance WebSocket connection
+│       ├── orderbook/    # Order book reconstruction
+│       ├── strategy/     # Trading strategy logic
+│       ├── broker/       # Paper trading execution
+│       └── ml/           # ONNX model loading & inference
 │
-├── core/                 # OCaml - Risk engine
+├── core/                 # OCaml - Risk gateway
 │   └── lib/
 │       ├── types/        # Domain types (Order, Trade, Position)
-│       ├── orderbook/    # Type-safe order book
 │       ├── risk/         # Risk validation & limits
 │       └── pnl/          # P&L calculation
 │
-├── strategy/             # Python - Trading strategy
-│   └── src/
-│       ├── signals/      # Trading strategies
-│       ├── features/     # Microstructure features
-│       ├── broker/       # Paper broker
-│       ├── api/          # REST API (FastAPI)
-│       └── storage/      # SQLite persistence
+├── models/               # ML model training (offline, Python)
+│   ├── ml/               # LightGBM, XGBoost training
+│   ├── dl/               # CNN, LSTM training
+│   ├── export/           # ONNX export utilities
+│   └── training/         # Training scripts
 │
-├── reports/              # Report generator
-│   ├── generate.py       # Chart generation
-│   └── templates/        # README templates
+├── trained/              # Trained model artifacts
+│   └── onnx/             # ONNX models for Rust runtime
 │
-├── docs/                 # Documentation
-│   ├── architecture.md   # System design
-│   ├── strategies.md     # Trading logic
-│   └── deployment.md     # Deploy guide
+├── reports/              # Report generator (GitHub Actions)
+│   ├── generate.py       # Chart generation from API data
+│   └── assets/           # Generated charts
+│
+├── deploy/               # Deployment configuration
+│   ├── supervisord.conf  # Process management
+│   └── entrypoint.sh     # Container startup
 │
 └── .github/workflows/    # CI/CD
     ├── ci.yml            # Tests on every push
     ├── deploy-render.yml # Deploy to Render
-    ├── daily-report.yml  # Update charts daily
+    ├── daily-report.yml  # Fetch metrics & update README
     └── health-check.yml  # Monitor every 15min
 ```
 
@@ -226,10 +234,23 @@ Track and compare strategy variations:
 
 ### Environment Variables (set in Render Dashboard)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | No | For trade notifications |
-| `TELEGRAM_CHAT_ID` | No | Your Telegram chat ID |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SYMBOLS` | No | `BTCUSDT,ETHUSDT` | Trading symbols |
+| `INITIAL_BALANCE` | No | `10000` | Starting paper balance |
+| `IMBALANCE_THRESHOLD` | No | `0.3` | Order book imbalance threshold |
+| `MIN_CONFIDENCE` | No | `0.6` | Minimum ML confidence for trades |
+| `RISK_MAX_POSITION` | No | `1.0` | Maximum position size per symbol |
+| `RISK_MAX_DRAWDOWN` | No | `0.05` | Maximum drawdown before circuit breaker |
+| `TELEGRAM_BOT_TOKEN` | No | - | For trade notifications |
+| `TELEGRAM_CHAT_ID` | No | - | Your Telegram chat ID |
+
+### GitHub Secrets (for workflows)
+
+| Secret | Description |
+|--------|-------------|
+| `RENDER_SERVICE_URL` | Your Render service URL (e.g., `https://orp-flow-trading.onrender.com`) |
+| `RENDER_DEPLOY_HOOK_URL` | Deploy hook URL from Render Dashboard → Settings → Deploy Hook |
 
 ### Telegram Setup (Optional)
 
@@ -257,16 +278,24 @@ Track and compare strategy variations:
 # All tests
 make test
 
-# Individual components
+# Rust tests (trading engine)
 cd market-data && cargo test
+
+# OCaml tests (risk gateway)
 cd core && dune test
-cd strategy && pytest
+
+# Python tests (model training only - offline)
+cd models && pytest
 ```
 
-### Linting
+### Building
 
 ```bash
-make lint
+# Build Rust binary with ML support
+cd market-data && cargo build --release --features ml
+
+# Build OCaml risk gateway
+cd core && dune build --release
 ```
 
 ### Benchmarks

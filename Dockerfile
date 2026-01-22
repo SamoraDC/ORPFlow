@@ -6,7 +6,7 @@
 # ============================================================================
 # Stage 1: Rust Builder with ONNX Runtime
 # ============================================================================
-FROM rust:1.83-slim-bookworm AS rust-builder
+FROM rust:1.85-slim-bookworm AS rust-builder
 
 # Install build dependencies + ONNX Runtime
 RUN apt-get update && apt-get install -y \

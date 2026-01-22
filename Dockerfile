@@ -9,11 +9,13 @@
 FROM rust:1.85-slim-bookworm AS rust-builder
 
 # Install build dependencies + ONNX Runtime
+# CRITICAL: g++ is required for libstdc++ linking (ONNX Runtime dependency)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     curl \
     ca-certificates \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install ONNX Runtime for building
@@ -23,8 +25,9 @@ RUN curl -L https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VE
     && tar -xzf /tmp/onnxruntime.tgz -C /opt \
     && rm /tmp/onnxruntime.tgz
 
-ENV ORT_LIB_LOCATION=/opt/onnxruntime-linux-x64-${ORT_VERSION}
-ENV LD_LIBRARY_PATH=/opt/onnxruntime-linux-x64-${ORT_VERSION}/lib:$LD_LIBRARY_PATH
+# Set ONNX Runtime paths for building
+ENV ORT_LIB_LOCATION=/opt/onnxruntime-linux-x64-1.19.2
+ENV LD_LIBRARY_PATH=/opt/onnxruntime-linux-x64-1.19.2/lib
 
 WORKDIR /app/market-data
 
@@ -85,16 +88,20 @@ RUN eval $(opam env) && dune build --release
 FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies (minimal - no Python)
+# CRITICAL: libstdc++6 is required for ONNX Runtime at runtime
 RUN apt-get update && apt-get install -y \
     libssl3 \
     ca-certificates \
     curl \
     supervisor \
+    libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy ONNX Runtime libraries for inference
 COPY --from=rust-builder /opt/onnxruntime-linux-x64-1.19.2/lib /opt/onnxruntime/lib
-ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib:$LD_LIBRARY_PATH
+
+# Set LD_LIBRARY_PATH for ONNX Runtime
+ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib
 
 WORKDIR /app
 

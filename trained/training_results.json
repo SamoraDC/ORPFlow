@@ -1,0 +1,27 @@
+{
+  "training_time_seconds": 220.92650604248047,
+  "boosting_type": "gbdt",
+  "best_params": {},
+  "cpcv_results": {
+    "mean_sharpe": 0.5242230890175313,
+    "std_sharpe": 4.640980227079229,
+    "min_sharpe": -6.301210282158801,
+    "max_sharpe": 9.686281380965893
+  },
+  "test_metrics": {
+    "mse": 5.0649928463349764e-06,
+    "rmse": 0.0022505538976738543,
+    "mae": 0.0017247028424869837,
+    "r2": -0.00044392138822346716,
+    "direction_accuracy": 0.49799300123507617,
+    "sharpe_ratio": 0.08086592672242632,
+    "sortino_ratio": 0.12561894205960075,
+    "win_rate": 0.49799300123507617,
+    "max_drawdown": 0.5217020566079942,
+    "total_return": 0.005869433207337016,
+    "best_iteration": 1,
+    "training_time_seconds": 220.92650604248047
+  },
+  "model_path": "/home/samoradc/SamoraDC/ORPFlow/trained/lightgbm_model.txt",
+  "feature_count": 118
+}

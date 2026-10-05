@@ -164,7 +164,7 @@ validation:
 # ONNX Export
 onnx:
   output_dir: "trained/onnx"
-  opset_version: 17
+  opset_version: 15
   optimize: true
   quantize: false  # Enable for smaller models
 

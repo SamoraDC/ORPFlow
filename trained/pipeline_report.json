@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-01-16T16:56:30.747944",
+  "config": {
+    "use_signal_processing": true,
+    "use_advanced_microstructure": true,
+    "use_hawkes": true,
+    "use_regimes": true,
+    "use_triple_barrier": true
+  },
+  "preprocessing_time": 0,
+  "training_time": 1120.693122625351,
+  "total_time": 1127.0180320739746,
+  "num_features": 332,
+  "num_samples": 129541,
+  "models_trained": [
+    "lightgbm",
+    "xgboost"
+  ],
+  "model_metrics": {
+    "lightgbm": {
+      "metrics": {
+        "model": "lightgbm",
+        "mse": 9.007587185437173e-07,
+        "rmse": 0.0009490830935928199,
+        "r2": 0.8200745698975217,
+        "direction_accuracy": 0.8646413409053316,
+        "sharpe_ratio": 260.94101764586605,
+        "win_rate": 0.8646413409053316,
+        "max_drawdown": 0.007078313501551747,
+        "profit_factor": 21.212705878666156,
+        "total_return": 28.234169565721317
+      },
+      "model_path": "/home/samoradc/SamoraDC/ORPFlow/trained/lightgbm_advanced.txt",
+      "best_iteration": 497
+    },
+    "xgboost": {
+      "metrics": {
+        "model": "xgboost",
+        "mse": 9.119028732129664e-07,
+        "rmse": 0.0009549360571331288,
+        "r2": 0.8178485631942749,
+        "direction_accuracy": 0.8646964768153499,
+        "sharpe_ratio": 260.7692545511354,
+        "win_rate": 0.8646964768153499,
+        "max_drawdown": 0.006343841552734375,
+        "profit_factor": 21.136682510375977,
+        "total_return": 28.224525451660156
+      },
+      "model_path": "/home/samoradc/SamoraDC/ORPFlow/trained/xgboost_advanced.json",
+      "best_iteration": 499
+    }
+  },
+  "readiness_decisions": {
+    "lightgbm": "GO",
+    "xgboost": "GO"
+  },
+  "onnx_exported": [],
+  "errors": []
+}

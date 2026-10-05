@@ -1,0 +1,51 @@
+quero que veja se é possível adcionar dados como order book, e mais granulares, e assim
+  usar métodos quantitativos para isso, como filtros de Kalman, Random Matrix Theory (RMT)
+  signal extraction in financial time series, Fisher Transform, Decomposes signal using EMD
+  (Empirical Mode Decomposition), Hilbert-Huang Transform, market volatility regimes using
+  Continuous Wavelet Transforms (CWT), e demais 1. Processos de Hawkes (15 métodos)
+
+  - Kernel Exponencial, Power-Law, Soma de Exponenciais
+  - Razão de Branching, Intensidade Condicional
+  - Algoritmo de Thinning de Ogata
+  - MLE, EM Algorithm, Newton-Raphson
+  - Hawkes Multivariado, Modelagem de Order Flow
+
+  2. Microestrutura de Mercado (18 métodos)
+
+  - Order Flow Imbalance (OFI)
+  - Micro-preço ponderado por volume/profundidade
+  - Book Imbalance, Book Pressure
+  - Spreads (absoluto, relativo, efetivo, realizado)
+  - Kyle's Lambda, Amihud Illiquidity, Roll's Measure
+  - Volatilidade Realizada, Garman-Klass
+
+  3. Triple-Barrier & Meta-Labeling (15 métodos)
+
+  - Volatilidade Rolling, Expoente de Hurst
+  - Detecção de Regime, Barreiras Dinâmicas/Assimétricas
+  - Ponderação de Amostras (balanceada, decay temporal, unicidade)
+
+  4. Position Sizing & Risco (10 métodos)
+
+  - Kelly Criterion, Fractional Kelly
+  - Detecção de Regime (volatilidade e tendência)
+  - Maximum Drawdown, Win Rate, Profit Factor
+
+  5. Validação Cruzada (9 métodos)
+
+  - Purged K-Fold, Embargo Period, CPCV
+  - Probability of Backtest Overfitting (PBO)
+  - Deflated Sharpe Ratio, White's Reality Check, Bootstrap
+
+  6. Feature Engineering (25 métodos)
+
+  - RSI, ATR, MACD, ADX
+  - Volatilidade Yang-Zhang, Variance Ratio Test
+  - Informação Mútua, Momentum Multi-horizonte
+
+  7. Feature Selection (8 métodos)
+
+  - Filtro de Informação Mútua, Filtro de Correlação
+  - RFE, RFECV, SHAP Values olhe tudo isso, e verifique a possibilidade de usar cada um
+  deles nesse projeto, faça uma investigação bem profunda e use todos aqueles que forem
+  possíveis usar, sem se preocupar com latêcia

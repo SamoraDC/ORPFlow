@@ -54,20 +54,20 @@ def train_xgboost(config_path: Optional[Path] = None) -> Any:
     config_path = config_path or project_root / "models" / "config" / "xgboost_config.yaml"
     config = load_config(config_path)
 
+    # XGBoostConfig signature: data_path, output_dir, target_column, seed, use_gpu,
+    # n_estimators, early_stopping_rounds, cpcv_splits, embargo_pct, purge_pct,
+    # enable_optuna, optuna_trials, optuna_timeout, enable_mlflow, enable_wandb
     trainer_config = XGBoostConfig(
-        data_path=project_root / config["data"]["data_path"],
+        data_path=str(project_root / config["data"]["data_path"]),
         target_column=config["data"]["target_column"],
-        output_dir=project_root / config["output"]["output_dir"],
-        model_name=config["output"]["model_name"],
+        output_dir=str(project_root / config["output"]["output_dir"]),
         n_estimators=config["model"]["n_estimators"],
-        max_depth=config["model"]["max_depth"],
-        learning_rate=config["model"]["learning_rate"],
         early_stopping_rounds=config["model"]["early_stopping_rounds"],
-        cpcv_enabled=config["cpcv"]["enabled"],
-        cpcv_n_splits=config["cpcv"]["n_splits"],
-        cpcv_n_test_groups=config["cpcv"]["n_test_groups"],
-        optuna_enabled=config["optuna"]["enabled"],
-        optuna_n_trials=config["optuna"]["n_trials"],
+        cpcv_splits=config["cpcv"]["n_splits"],
+        embargo_pct=config["cpcv"].get("embargo_pct", 0.01),
+        purge_pct=config["cpcv"].get("purge_pct", 0.01),
+        enable_optuna=config["optuna"]["enabled"],
+        optuna_trials=config["optuna"]["n_trials"],
     )
 
     trainer = XGBoostTrainer(trainer_config)
@@ -88,20 +88,21 @@ def train_lightgbm(config_path: Optional[Path] = None) -> Any:
     config_path = config_path or project_root / "models" / "config" / "lightgbm_config.yaml"
     config = load_config(config_path)
 
+    # LightGBMConfig signature: data_path, output_dir, target_column, seed, use_gpu,
+    # boosting_type, n_estimators, early_stopping_rounds, cpcv_splits, embargo_pct,
+    # purge_pct, categorical_features, enable_optuna, optuna_trials, optuna_timeout
     trainer_config = LightGBMConfig(
-        data_path=project_root / config["data"]["data_path"],
+        data_path=str(project_root / config["data"]["data_path"]),
         target_column=config["data"]["target_column"],
-        output_dir=project_root / config["output"]["output_dir"],
-        model_name=config["output"]["model_name"],
+        output_dir=str(project_root / config["output"]["output_dir"]),
+        boosting_type=config["model"].get("boosting_type", "gbdt"),
         n_estimators=config["model"]["n_estimators"],
-        max_depth=config["model"]["max_depth"],
-        learning_rate=config["model"]["learning_rate"],
         early_stopping_rounds=config["model"]["early_stopping_rounds"],
-        cpcv_enabled=config["cpcv"]["enabled"],
-        cpcv_n_splits=config["cpcv"]["n_splits"],
-        cpcv_n_test_groups=config["cpcv"]["n_test_groups"],
-        optuna_enabled=config["optuna"]["enabled"],
-        optuna_n_trials=config["optuna"]["n_trials"],
+        cpcv_splits=config["cpcv"]["n_splits"],
+        embargo_pct=config["cpcv"].get("embargo_pct", 0.01),
+        purge_pct=config["cpcv"].get("purge_pct", 0.01),
+        enable_optuna=config["optuna"]["enabled"],
+        optuna_trials=config["optuna"]["n_trials"],
     )
 
     trainer = LightGBMTrainer(trainer_config)
@@ -122,23 +123,31 @@ def train_lstm(config_path: Optional[Path] = None) -> Any:
     config_path = config_path or project_root / "models" / "config" / "lstm_config.yaml"
     config = load_config(config_path)
 
+    # LSTMTrainingConfig signature: data_path, target_column, sequence_length,
+    # hidden_size, num_layers, dropout, bidirectional, use_attention,
+    # batch_size, epochs, learning_rate, weight_decay, patience, gradient_clip,
+    # lr_scheduler, warmup_epochs, min_lr, n_splits, n_test_groups, embargo_pct, purge_pct,
+    # enable_optuna, n_trials, optuna_timeout, output_dir, model_name, export_onnx, device
     trainer_config = LSTMTrainingConfig(
-        data_path=project_root / config["data"]["data_path"],
+        data_path=str(project_root / config["data"]["data_path"]),
         target_column=config["data"]["target_column"],
         sequence_length=config["data"]["sequence_length"],
         hidden_size=config["model"]["hidden_size"],
         num_layers=config["model"]["num_layers"],
         dropout=config["model"]["dropout"],
-        bidirectional=config["model"]["bidirectional"],
-        use_attention=config["model"]["use_attention"],
+        bidirectional=config["model"].get("bidirectional", False),
+        use_attention=config["model"].get("use_attention", True),
         batch_size=config["training"]["batch_size"],
         epochs=config["training"]["epochs"],
         learning_rate=config["training"]["learning_rate"],
         patience=config["training"]["patience"],
-        cpcv_enabled=config["cpcv"]["enabled"],
-        cpcv_n_splits=config["cpcv"]["n_splits"],
-        optuna_enabled=config["optuna"]["enabled"],
-        output_dir=project_root / config["output"]["output_dir"],
+        n_splits=config["cpcv"]["n_splits"],
+        n_test_groups=config["cpcv"].get("n_test_groups", 2),
+        embargo_pct=config["cpcv"].get("embargo_pct", 0.01),
+        purge_pct=config["cpcv"].get("purge_pct", 0.005),
+        enable_optuna=config["optuna"]["enabled"],
+        n_trials=config["optuna"]["n_trials"],
+        output_dir=str(project_root / config["output"]["output_dir"]),
         model_name=config["output"]["model_name"],
         export_onnx=config["output"]["export_onnx"],
     )
@@ -161,24 +170,32 @@ def train_cnn(config_path: Optional[Path] = None) -> Any:
     config_path = config_path or project_root / "models" / "config" / "cnn_config.yaml"
     config = load_config(config_path)
 
+    # CNNTrainingConfig signature: data_path, target_column, sequence_length,
+    # conv_channels, kernel_sizes, fc_units, dropout, use_residual, use_attention,
+    # batch_size, epochs, learning_rate, weight_decay, patience, gradient_clip,
+    # lr_scheduler, warmup_epochs, min_lr, n_splits, n_test_groups, embargo_pct, purge_pct,
+    # enable_optuna, n_trials, optuna_timeout, output_dir, model_name, export_onnx, device
     trainer_config = CNNTrainingConfig(
-        data_path=project_root / config["data"]["data_path"],
+        data_path=str(project_root / config["data"]["data_path"]),
         target_column=config["data"]["target_column"],
         sequence_length=config["data"]["sequence_length"],
         conv_channels=config["model"]["conv_channels"],
         kernel_sizes=config["model"]["kernel_sizes"],
         fc_units=config["model"]["fc_units"],
         dropout=config["model"]["dropout"],
-        use_residual=config["model"]["use_residual"],
-        use_attention=config["model"]["use_attention"],
+        use_residual=config["model"].get("use_residual", True),
+        use_attention=config["model"].get("use_attention", True),
         batch_size=config["training"]["batch_size"],
         epochs=config["training"]["epochs"],
         learning_rate=config["training"]["learning_rate"],
         patience=config["training"]["patience"],
-        cpcv_enabled=config["cpcv"]["enabled"],
-        cpcv_n_splits=config["cpcv"]["n_splits"],
-        optuna_enabled=config["optuna"]["enabled"],
-        output_dir=project_root / config["output"]["output_dir"],
+        n_splits=config["cpcv"]["n_splits"],
+        n_test_groups=config["cpcv"].get("n_test_groups", 2),
+        embargo_pct=config["cpcv"].get("embargo_pct", 0.01),
+        purge_pct=config["cpcv"].get("purge_pct", 0.005),
+        enable_optuna=config["optuna"]["enabled"],
+        n_trials=config["optuna"]["n_trials"],
+        output_dir=str(project_root / config["output"]["output_dir"]),
         model_name=config["output"]["model_name"],
         export_onnx=config["output"]["export_onnx"],
     )
@@ -196,55 +213,55 @@ def train_d4pg(config_path: Optional[Path] = None) -> Any:
     logger.info("Training D4PG+EVT Agent")
     logger.info("=" * 60)
 
-    from models.training import D4PGTrainer, TrainerConfig
-    from models.rl import D4PGAgent, TradingEnvironment
+    from models.rl.d4pg_evt import D4PGAgent, TradingEnvironment, train_d4pg as d4pg_train
+    from sklearn.preprocessing import RobustScaler
     import pandas as pd
+    import numpy as np
 
     config_path = config_path or project_root / "models" / "config" / "training_config.yaml"
     config = load_config(config_path)
-    rl_config = config["rl"]["d4pg_evt"]["params"]
+    rl_config = config.get("rl", {}).get("d4pg_evt", {}).get("params", {})
 
     # Load data
     data_path = project_root / "data" / "processed" / "features.parquet"
     df = pd.read_parquet(data_path)
 
-    # Get feature columns
+    # Get feature columns (exclude targets, timestamps, symbol)
     feature_cols = [c for c in df.columns if not c.startswith("target_")
                     and c not in ["open_time", "close_time", "symbol"]]
 
-    # Create environment
-    env = TradingEnvironment(
-        data=df,
-        feature_columns=feature_cols,
-        initial_balance=10000.0,
-    )
+    # TradingEnvironment expects:
+    # - data: np.ndarray (OHLCV data)
+    # - features: np.ndarray (pre-computed features, normalized)
+    ohlcv_cols = ["open", "high", "low", "close", "volume"]
+    data = df[ohlcv_cols].values
+    features = df[feature_cols].values
 
-    # Create agent
-    state_dim = len(feature_cols) + 4  # features + portfolio state
-    action_dim = 1  # position sizing
+    # Normalize features
+    scaler = RobustScaler()
+    features = scaler.fit_transform(features)
 
-    agent = D4PGAgent(
-        state_dim=state_dim,
-        action_dim=action_dim,
-        actor_lr=rl_config["actor_lr"],
-        critic_lr=rl_config["critic_lr"],
-        gamma=rl_config["gamma"],
-        tau=rl_config["tau"],
-        n_atoms=rl_config["n_atoms"],
-        v_min=rl_config["v_min"],
-        v_max=rl_config["v_max"],
-        n_step=rl_config["n_step"],
-    )
+    # Use the built-in train_d4pg function
+    episodes = rl_config.get("episodes", 200)
+    max_steps = rl_config.get("max_steps", 5000)
 
-    # Create trainer
-    trainer_config = TrainerConfig(
-        total_timesteps=rl_config["total_timesteps"],
-        eval_freq=rl_config["eval_freq"],
-        output_dir=project_root / "trained",
-    )
+    agent = d4pg_train(data, features, episodes=episodes, max_steps=max_steps)
 
-    trainer = D4PGTrainer(env, agent, trainer_config)
-    result = trainer.train()
+    # Save agent
+    model_dir = project_root / "trained"
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    agent.save(str(model_dir / "d4pg_evt_agent.pt"))
+    agent.export_onnx(str(model_dir / "onnx" / "d4pg_actor.onnx"))
+
+    result = {
+        "metrics": {
+            "var_99": agent.evt_model.var(),
+            "cvar_99": agent.evt_model.cvar(),
+            "training_steps": agent.training_step,
+        },
+        "model_path": str(model_dir / "d4pg_evt_agent.pt"),
+    }
 
     logger.info(f"D4PG training completed. Metrics: {result.get('metrics', {})}")
     return result
@@ -256,9 +273,11 @@ def train_marl(config_path: Optional[Path] = None) -> Any:
     logger.info("Training MARL System")
     logger.info("=" * 60)
 
-    from models.training import MARLTrainer, TrainerConfig
-    from models.rl import MARLSystem, TradingEnvironment
+    from models.rl.marl import MARLSystem, train_marl as marl_train
+    from sklearn.preprocessing import RobustScaler
     import pandas as pd
+    import numpy as np
+    import torch
 
     config_path = config_path or project_root / "models" / "config" / "training_config.yaml"
     config = load_config(config_path)
@@ -267,45 +286,62 @@ def train_marl(config_path: Optional[Path] = None) -> Any:
     # Load data
     data_path = project_root / "data" / "processed" / "features.parquet"
     df = pd.read_parquet(data_path)
+    logger.info(f"Loaded {len(df)} rows from {data_path}")
 
-    # Get feature columns
+    # Get feature columns (exclude targets and metadata)
     feature_cols = [c for c in df.columns if not c.startswith("target_")
                     and c not in ["open_time", "close_time", "symbol"]]
+    logger.info(f"Using {len(feature_cols)} features")
 
-    # Create environment
-    env = TradingEnvironment(
-        data=df,
-        feature_columns=feature_cols,
-        initial_balance=10000.0,
+    # MARLTradingEnvironment expects numpy arrays, not DataFrame
+    ohlcv_cols = ["open", "high", "low", "close", "volume"]
+    data = df[ohlcv_cols].values
+
+    # Extract and normalize features
+    features = df[feature_cols].values
+    scaler = RobustScaler()
+    features = scaler.fit_transform(features)
+
+    # Handle NaN values
+    features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # Training params
+    n_agents = marl_config.get("num_agents", 5)
+    episodes = marl_config.get("total_timesteps", 300) // marl_config.get("n_steps", 1000)
+    max_steps = marl_config.get("n_steps", 1000)
+
+    logger.info(f"Training MARL with {n_agents} agents, {episodes} episodes, {max_steps} max_steps")
+
+    # Use the built-in train_marl function
+    marl_system = marl_train(
+        data=data,
+        features=features,
+        n_agents=n_agents,
+        episodes=episodes,
+        max_steps=max_steps,
     )
 
-    # Create MARL system
-    state_dim = len(feature_cols) + 4
-    action_dim = 1
+    # Save model
+    output_dir = project_root / "trained"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model_path = output_dir / "marl_system.pt"
 
-    marl_system = MARLSystem(
-        num_agents=marl_config["num_agents"],
-        state_dim=state_dim,
-        action_dim=action_dim,
-        hidden_size=marl_config["hidden_size"],
-        learning_rate=marl_config["learning_rate"],
-        gamma=marl_config["gamma"],
-        agent_types=marl_config["agent_types"],
-    )
+    torch.save({
+        "agents": [agent.state_dict() for agent in marl_system.agents],
+        "state_dim": marl_system.state_dim,
+        "n_agents": marl_system.n_agents,
+        "message_dim": 32,
+    }, model_path)
 
-    # Create trainer
-    trainer_config = TrainerConfig(
-        total_timesteps=marl_config["total_timesteps"],
-        n_steps=marl_config["n_steps"],
-        batch_size=marl_config["batch_size"],
-        output_dir=project_root / "trained",
-    )
+    logger.info(f"MARL model saved to {model_path}")
 
-    trainer = MARLTrainer(env, marl_system, trainer_config)
-    result = trainer.train()
-
-    logger.info(f"MARL training completed. Metrics: {result.get('metrics', {})}")
-    return result
+    return {
+        "model_path": str(model_path),
+        "metrics": {
+            "n_agents": n_agents,
+            "episodes": episodes,
+        }
+    }
 
 
 def export_all_to_onnx() -> Dict[str, str]:

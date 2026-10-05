@@ -186,7 +186,7 @@ class XGBoostModel:
             onnx_model = convert_xgboost(
                 self.model,
                 initial_types=initial_types,
-                target_opset=17,
+                target_opset=15,
             )
 
             Path(path).parent.mkdir(parents=True, exist_ok=True)

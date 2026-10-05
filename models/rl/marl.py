@@ -529,7 +529,7 @@ class MARLSystem:
                 (dummy_state, dummy_messages),
                 agent_path,
                 export_params=True,
-                opset_version=17,
+                opset_version=15,
                 do_constant_folding=True,
                 input_names=["state", "messages"],
                 output_names=["action"],

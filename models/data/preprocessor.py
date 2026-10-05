@@ -1,16 +1,51 @@
 """
 Feature Engineering and Data Preprocessing
 Transforms raw market data into ML-ready features
+
+Enhanced with advanced quantitative methods:
+- Signal Processing (Kalman, EMD, HHT, Wavelets, RMT, Fisher)
+- Advanced Microstructure (207 features)
+- Triple Barrier Labeling & Meta-Labeling
+- Hawkes Processes for order flow modeling
+- Feature Selection (SHAP, RFE, PBO, VIF)
 """
 
 import logging
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.model_selection import train_test_split
+
+# Advanced modules
+from .signal_processing import (
+    KalmanFilter,
+    EMD,
+    HilbertHuangTransform,
+    WaveletTransform,
+    RandomMatrixTheory,
+    FisherTransform,
+    kalman_smooth_prices,
+    emd_decompose,
+    wavelet_denoise,
+)
+from .microstructure import (
+    MicrostructureAnalyzer,
+    calculate_all_microstructure_features,
+)
+from .hawkes_processes import (
+    HawkesTradingAnalyzer,
+    BidAskHawkes,
+)
+from .triple_barrier import (
+    TripleBarrierLabeler,
+    BarrierConfig,
+    cusum_filter,
+    get_daily_vol,
+    detect_combined_regime,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -145,6 +180,397 @@ class FeatureEngineer:
 
         return df
 
+    def calculate_signal_processing_features(
+        self,
+        df: pd.DataFrame,
+        use_kalman: bool = True,
+        use_emd: bool = True,
+        use_wavelets: bool = True,
+        use_fisher: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Calculate advanced signal processing features.
+
+        Includes:
+        - Kalman Filter: Smoothed prices, trend extraction
+        - EMD: Intrinsic Mode Functions decomposition
+        - Wavelets: Multi-scale volatility and denoising
+        - Fisher Transform: Normalized indicators
+        """
+        df = df.copy()
+
+        # ==== Kalman Filter Features ====
+        if use_kalman:
+            try:
+                # Smooth prices with Kalman filter
+                kalman_smoothed = kalman_smooth_prices(
+                    df["close"].values,
+                    process_var=1e-5,
+                    obs_var=1e-3
+                )
+                df["kalman_price"] = kalman_smoothed
+                df["kalman_deviation"] = (df["close"] - df["kalman_price"]) / df["kalman_price"]
+
+                # Kalman trend (diff of smoothed)
+                df["kalman_trend"] = df["kalman_price"].pct_change()
+
+                # Kalman on volume
+                kalman_vol = kalman_smooth_prices(
+                    df["volume"].values,
+                    process_var=1e-4,
+                    obs_var=1e-2
+                )
+                df["kalman_volume"] = kalman_vol
+                df["volume_kalman_ratio"] = df["volume"] / (df["kalman_volume"] + 1e-10)
+
+                logger.debug("Kalman features calculated")
+            except Exception as e:
+                logger.warning(f"Kalman filter failed: {e}")
+
+        # ==== EMD Features ====
+        if use_emd:
+            try:
+                # Apply EMD to log prices
+                log_prices = np.log(df["close"].values + 1e-10)
+                imfs, residue = emd_decompose(log_prices, max_imfs=5)
+
+                # Store IMFs (first 3 + residue)
+                for i, imf in enumerate(imfs[:3]):
+                    df[f"emd_imf_{i+1}"] = imf
+
+                df["emd_residue"] = residue
+
+                # Energy of each IMF
+                for i, imf in enumerate(imfs[:3]):
+                    df[f"emd_energy_{i+1}"] = imf ** 2
+
+                logger.debug("EMD features calculated")
+            except Exception as e:
+                logger.warning(f"EMD decomposition failed: {e}")
+
+        # ==== Wavelet Features ====
+        if use_wavelets:
+            try:
+                wt = WaveletTransform(wavelet='db4')
+
+                # Multi-scale volatility using volatility_regime_detection
+                returns = df["close"].pct_change().fillna(0).values
+                vol_analysis = wt.volatility_regime_detection(returns, level=4)
+
+                for name, values in vol_analysis.items():
+                    # Ensure matching length
+                    if len(values) < len(df):
+                        values = np.pad(values, (0, len(df) - len(values)), mode='edge')
+                    elif len(values) > len(df):
+                        values = values[:len(df)]
+                    df[f"wavelet_{name}"] = values
+
+                # Denoised price
+                denoised = wavelet_denoise(df["close"].values, wavelet='db4', level=3)
+                df["wavelet_price"] = denoised
+                df["wavelet_deviation"] = (df["close"] - df["wavelet_price"]) / df["wavelet_price"]
+
+                logger.debug("Wavelet features calculated")
+            except Exception as e:
+                logger.warning(f"Wavelet transform failed: {e}")
+
+        # ==== Fisher Transform Features ====
+        if use_fisher:
+            try:
+                ft = FisherTransform(clip_value=0.999)
+
+                # Fisher transform of RSI
+                if "rsi_14" in df.columns:
+                    rsi_normalized = (df["rsi_14"] - 50) / 50  # Scale to [-1, 1]
+                    rsi_normalized = rsi_normalized.clip(-0.999, 0.999)
+                    df["fisher_rsi"] = ft.transform(rsi_normalized.values)
+
+                # Fisher transform of price position
+                for w in [10, 20]:
+                    high_w = df["close"].rolling(window=w).max()
+                    low_w = df["close"].rolling(window=w).min()
+                    mid = (high_w + low_w) / 2
+                    price_pos = (df["close"] - mid) / ((high_w - low_w) / 2 + 1e-10)
+                    price_pos = price_pos.clip(-0.999, 0.999).fillna(0)
+                    df[f"fisher_price_{w}"] = ft.transform(price_pos.values)
+
+                logger.debug("Fisher transform features calculated")
+            except Exception as e:
+                logger.warning(f"Fisher transform failed: {e}")
+
+        return df
+
+    def calculate_advanced_microstructure(
+        self,
+        df: pd.DataFrame,
+        bid: Optional[pd.Series] = None,
+        ask: Optional[pd.Series] = None,
+    ) -> pd.DataFrame:
+        """
+        Calculate advanced microstructure features.
+
+        Uses the MicrostructureAnalyzer for comprehensive order flow,
+        liquidity, and market quality metrics.
+        """
+        df = df.copy()
+
+        try:
+            # Calculate comprehensive microstructure features using the convenience function
+            # It expects a DataFrame with OHLCV columns
+            micro_df = calculate_all_microstructure_features(df)
+
+            # Merge microstructure features with original dataframe
+            for col in micro_df.columns:
+                if col not in df.columns:
+                    df[f"micro_{col}"] = micro_df[col].values
+
+            logger.info(f"Added microstructure features")
+
+        except Exception as e:
+            logger.warning(f"Advanced microstructure calculation failed: {e}")
+
+        return df
+
+    def calculate_hawkes_features(
+        self,
+        df: pd.DataFrame,
+        window: int = 100,
+    ) -> pd.DataFrame:
+        """
+        Calculate Hawkes process features for order flow modeling.
+
+        Hawkes processes model self-exciting point processes,
+        useful for detecting order clustering and market toxicity.
+        """
+        df = df.copy()
+
+        try:
+            # Get trade times and signs
+            if "open_time" in df.columns:
+                times = (df["open_time"] - df["open_time"].min()).dt.total_seconds().values
+            else:
+                times = np.arange(len(df)).astype(float)
+
+            # Calculate trade direction
+            trade_signs = np.sign(df["close"].diff()).fillna(1).values
+
+            # Rolling Hawkes intensity estimation
+            analyzer = HawkesTradingAnalyzer()
+
+            # Calculate rolling intensity features
+            intensities = []
+            branching_ratios = []
+
+            for i in range(window, len(df)):
+                window_times = times[i-window:i]
+                window_times = window_times - window_times[0]  # Normalize to start at 0
+
+                try:
+                    # Fit Hawkes model to window
+                    analyzer.fit_from_trades(
+                        trade_times=window_times,
+                        trade_signs=trade_signs[i-window:i].astype(float)
+                    )
+
+                    # Get current intensity and branching ratio
+                    intensity = analyzer.hawkes.get_intensity(window_times[-1])
+                    branching = analyzer.hawkes.get_branching_ratio()
+
+                    intensities.append(intensity)
+                    branching_ratios.append(branching)
+
+                except Exception:
+                    # Use previous value or default
+                    intensities.append(intensities[-1] if intensities else 0.1)
+                    branching_ratios.append(branching_ratios[-1] if branching_ratios else 0.5)
+
+            # Pad beginning with first valid value
+            intensities = [intensities[0]] * window + intensities
+            branching_ratios = [branching_ratios[0]] * window + branching_ratios
+
+            df["hawkes_intensity"] = intensities
+            df["hawkes_branching"] = branching_ratios
+
+            # Derived features
+            df["hawkes_intensity_z"] = (
+                (df["hawkes_intensity"] - df["hawkes_intensity"].rolling(50).mean()) /
+                (df["hawkes_intensity"].rolling(50).std() + 1e-10)
+            )
+
+            # High branching ratio indicates clustering
+            df["hawkes_clustering"] = df["hawkes_branching"] > 0.7
+
+            logger.debug("Hawkes features calculated")
+
+        except Exception as e:
+            logger.warning(f"Hawkes features calculation failed: {e}")
+            # Add placeholder columns
+            df["hawkes_intensity"] = 0.1
+            df["hawkes_branching"] = 0.5
+            df["hawkes_intensity_z"] = 0.0
+            df["hawkes_clustering"] = False
+
+        return df
+
+    def calculate_regime_features(
+        self,
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Calculate market regime features.
+
+        Detects volatility, trend, and Hurst-based regimes
+        for adaptive model behavior.
+        """
+        df = df.copy()
+
+        try:
+            # Calculate combined regime
+            regimes = detect_combined_regime(
+                close=df["close"],
+                high=df.get("high"),
+                low=df.get("low"),
+            )
+
+            # Add regime columns
+            for col in regimes.columns:
+                df[f"regime_{col}"] = regimes[col].values
+
+            # One-hot encode combined regime
+            regime_dummies = pd.get_dummies(
+                regimes["combined_regime"],
+                prefix="regime"
+            )
+            for col in regime_dummies.columns:
+                df[col] = regime_dummies[col].values
+
+            # Calculate daily volatility target
+            df["daily_vol"] = get_daily_vol(df["close"])
+
+            logger.debug("Regime features calculated")
+
+        except Exception as e:
+            logger.warning(f"Regime detection failed: {e}")
+            df["daily_vol"] = df["close"].pct_change().rolling(20).std()
+
+        return df
+
+    def process_symbol_advanced(
+        self,
+        df: pd.DataFrame,
+        use_signal_processing: bool = True,
+        use_advanced_micro: bool = True,
+        use_hawkes: bool = False,  # Disabled by default (slow)
+        use_regimes: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Process a single symbol's data with ALL advanced features.
+
+        This is the enhanced version that includes:
+        - Basic features (returns, volatility, momentum)
+        - Signal processing (Kalman, EMD, Wavelets, Fisher)
+        - Advanced microstructure (207 features)
+        - Hawkes processes (order clustering)
+        - Regime detection (volatility, trend, Hurst)
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Raw OHLCV data
+        use_signal_processing : bool
+            Include Kalman, EMD, Wavelets, Fisher features
+        use_advanced_micro : bool
+            Include 207 microstructure features
+        use_hawkes : bool
+            Include Hawkes process features (slow, default False)
+        use_regimes : bool
+            Include regime detection features
+
+        Returns
+        -------
+        pd.DataFrame
+            Processed dataframe with all features
+        """
+        logger.info(f"Processing {len(df)} rows with advanced features...")
+
+        # Basic features
+        df = self.calculate_returns(df)
+        df = self.calculate_volatility(df)
+        df = self.calculate_momentum(df)
+        df = self.calculate_orderbook_features(df)
+        df = self.calculate_microstructure(df)  # Basic microstructure
+
+        # Advanced features
+        if use_signal_processing:
+            logger.info("Calculating signal processing features...")
+            df = self.calculate_signal_processing_features(df)
+
+        if use_advanced_micro:
+            logger.info("Calculating advanced microstructure features...")
+            df = self.calculate_advanced_microstructure(df)
+
+        if use_hawkes:
+            logger.info("Calculating Hawkes features (this may take a while)...")
+            df = self.calculate_hawkes_features(df)
+
+        if use_regimes:
+            logger.info("Calculating regime features...")
+            df = self.calculate_regime_features(df)
+
+        # Targets
+        df = self.calculate_targets(df)
+        df = self.add_time_features(df)
+
+        # Clean up
+        df = df.replace([np.inf, -np.inf], np.nan)
+
+        # Get feature and target columns
+        feature_cols = self.get_feature_columns(df)
+        target_cols = [c for c in df.columns if c.startswith("target_")]
+
+        # Separate numeric and categorical columns
+        numeric_feature_cols = df[feature_cols].select_dtypes(include=[np.number]).columns.tolist()
+        categorical_feature_cols = [c for c in feature_cols if c not in numeric_feature_cols]
+
+        logger.info(f"Numeric features: {len(numeric_feature_cols)}, Categorical: {len(categorical_feature_cols)}")
+
+        # Fill NaN in numeric features with forward/backward fill, then median
+        for col in numeric_feature_cols:
+            df[col] = df[col].ffill().bfill()
+            # If still has NaN (all values were NaN), fill with 0
+            if df[col].isna().any():
+                col_median = df[col].median()
+                fill_val = col_median if pd.notna(col_median) else 0.0
+                df[col] = df[col].fillna(fill_val)
+
+        # Fill NaN in categorical features with mode or 'unknown'
+        for col in categorical_feature_cols:
+            mode_val = df[col].mode()
+            fill_val = mode_val.iloc[0] if len(mode_val) > 0 else 'unknown'
+            df[col] = df[col].fillna(fill_val)
+
+        # Drop rows with NaN targets only (these are at the end due to forward shift)
+        initial_len = len(df)
+        df = df.dropna(subset=target_cols)
+        logger.info(f"Dropped {initial_len - len(df)} rows with NaN targets (end of series)")
+
+        # Check for remaining NaN (should be minimal now)
+        remaining_nan = df[numeric_feature_cols + target_cols].isna().any(axis=1).sum()
+        if remaining_nan > 0:
+            logger.warning(f"Found {remaining_nan} rows with remaining NaN, filling with 0")
+            # Fill remaining NaN instead of dropping
+            for col in numeric_feature_cols:
+                df[col] = df[col].fillna(0.0)
+
+        # Update feature_cols to only include numeric for ML (exclude categorical for now)
+        # Categorical columns will be encoded separately if needed
+        self._numeric_feature_cols = numeric_feature_cols
+        self._categorical_feature_cols = categorical_feature_cols
+
+        logger.info(f"Final shape: {df.shape}, Numeric Features: {len(numeric_feature_cols)}")
+
+        return df
+
     def calculate_targets(
         self,
         df: pd.DataFrame,
@@ -221,8 +647,16 @@ class FeatureEngineer:
 
         return df
 
-    def get_feature_columns(self, df: pd.DataFrame) -> List[str]:
-        """Get list of feature columns (excluding targets and metadata)"""
+    def get_feature_columns(self, df: pd.DataFrame, numeric_only: bool = False) -> List[str]:
+        """Get list of feature columns (excluding targets and metadata)
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame to get columns from
+        numeric_only : bool
+            If True, return only numeric columns suitable for ML training
+        """
         exclude_prefixes = ["target_", "open_time", "close_time", "symbol", "ignore"]
         exclude_cols = ["open", "high", "low", "close", "volume", "quote_volume",
                         "trades", "taker_buy_base", "taker_buy_quote"]
@@ -234,6 +668,11 @@ class FeatureEngineer:
             if col in exclude_cols:
                 continue
             feature_cols.append(col)
+
+        if numeric_only:
+            # Return only numeric columns
+            numeric_cols = df[feature_cols].select_dtypes(include=[np.number]).columns.tolist()
+            return numeric_cols
 
         return feature_cols
 

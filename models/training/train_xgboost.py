@@ -507,7 +507,7 @@ class XGBoostTrainer:
             from onnxmltools.convert.common.data_types import FloatTensorType
 
             initial_types = [("input", FloatTensorType([None, len(self.feature_names)]))]
-            onnx_model = convert_xgboost(self.model, initial_types=initial_types, target_opset=17)
+            onnx_model = convert_xgboost(self.model, initial_types=initial_types, target_opset=15)
 
             onnx_path = self.output_dir / "xgboost_model.onnx"
             onnx.save_model(onnx_model, str(onnx_path))

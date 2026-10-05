@@ -1,0 +1,88 @@
+================================================================================
+ONNX PARITY TEST REPORT
+================================================================================
+
+Total Tests: 6
+Passed: 0
+Failed: 6
+Pass Rate: 0.0%
+
+--------------------------------------------------------------------------------
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+Model: lightgbm
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: [ONNXRuntimeError] : 3 : NO_SUCHFILE : Load model from /home/samoradc/SamoraDC/ORPFlow/trained/onnx/lightgbm_model.onnx failed:Load model /home/samoradc/SamoraDC/ORPFlow/trained/onnx/lightgbm_model.onnx failed. File doesn't exist
+
+Model: xgboost
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: ONNX model not found
+
+Model: lstm
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: ONNX model not found
+
+Model: cnn
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: ONNX model not found
+
+Model: d4pg
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: ONNX model not found
+
+Model: marl_agent_0
+  Status: FAIL
+  Samples: 0
+  Max Abs Diff: inf
+  Mean Abs Diff: inf
+  Std Abs Diff: inf
+  Max Rel Diff: inf
+  Mean Rel Diff: inf
+  Failed Samples: 0
+  Tolerance (abs/rel): 1e-05 / 1e-04
+  Error: ONNX model not found
+
+================================================================================
+END OF REPORT
+================================================================================

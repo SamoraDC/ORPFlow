@@ -700,7 +700,7 @@ class LSTMTrainer:
             dummy_input,
             path,
             export_params=True,
-            opset_version=17,
+            opset_version=15,
             do_constant_folding=True,
             input_names=["input"],
             output_names=["output"],

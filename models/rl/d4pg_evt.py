@@ -637,7 +637,7 @@ class D4PGAgent:
             dummy_input,
             path,
             export_params=True,
-            opset_version=17,
+            opset_version=15,
             do_constant_folding=True,
             input_names=["state"],
             output_names=["action"],

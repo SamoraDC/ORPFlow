@@ -1,0 +1,47 @@
+[general]
+log_level = "info"
+log_format = "text"
+timeout_secs = 60
+
+[executors.codex]
+enabled = true
+command = "codex"
+args = [
+    "exec",
+    "--json",
+]
+timeout_secs = 30
+weight = 5
+
+[executors.gemini]
+enabled = true
+command = "gemini"
+args = [
+    "-o",
+    "json",
+]
+timeout_secs = 30
+weight = 5
+
+[executors.qwen]
+enabled = true
+command = "qwen"
+args = []
+timeout_secs = 30
+weight = 5
+
+[consensus]
+default_rule = "strong"
+min_score = 70
+max_loops = 3
+
+[reasoning]
+enabled = true
+db_path = ".tetrad/tetrad.db"
+max_patterns_per_query = 10
+consolidation_interval = 100
+
+[cache]
+enabled = true
+capacity = 1000
+ttl_secs = 300
